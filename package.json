@@ -1,6 +1,6 @@
 {
   "name": "@hyperstar/mcp",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "description": "Local stdio MCP server and CLI for Hyperstar headless workflows in Claude Code and Claude Desktop.",
