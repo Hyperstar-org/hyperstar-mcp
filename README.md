@@ -9,7 +9,33 @@ This README is self-contained for first-time agent setup. You do not need
 access to the Hyperstar source repository to install the package, configure an
 MCP client, or understand the safe workflow order.
 
-## Requirements
+## Hosted connector
+
+Connect to `https://mcp.hyper-star.org/mcp` using OAuth. Sign in to your Hyperstar account,
+select one workspace and approve the displayed permissions. The hosted connector requires
+no local Node.js installation or API key.
+
+[Add to Claude](https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Hyperstar&connectorUrl=https%3A%2F%2Fmcp.hyper-star.org%2Fmcp)
+
+- **Claude:** use the prefilled link above, or add the URL in Settings → Connectors.
+- **ChatGPT:** enable developer mode if your account/workspace permits it, create a custom
+  MCP connection with this URL and OAuth, then sign in. Add Hyperstar to a new conversation
+  from its tools menu. See [OpenAI's current setup guide](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+- **Claude Code:** run `claude mcp add --transport http hyperstar https://mcp.hyper-star.org/mcp`,
+  then use `/mcp` in Claude Code to authenticate.
+- **Codex:** run `codex mcp add hyperstar --url https://mcp.hyper-star.org/mcp` and complete
+  browser sign-in. Use `codex mcp login hyperstar` to reconnect.
+
+Start with `hyperstar_whoami` and `get_hyperstar_workflow_guide`. The workspace is bound
+at consent; disconnect in Hyperstar account settings → Connected apps and reconnect to
+switch workspaces. Disconnect stops future access, while requests already running and
+queued emails may finish. The connector can send real emails: review recipients and
+message content before authorizing a send.
+
+The app's `/mcp` page is [setup guidance](https://app.hyper-star.org/mcp). The transport is
+on the separate `mcp.hyper-star.org` host.
+
+## Local package requirements
 
 - Node.js `22.12.0` or newer.
 - An active Hyperstar account with access to at least one workspace.
@@ -48,10 +74,8 @@ other MCP clients that install local stdio servers from a command.
 
 ## Claude Code Quickstart
 
-Hyperstar MCP is a local stdio MCP server, not a remote HTTP endpoint. Do not
-look for `/mcp`, `/sse`, or a hosted MCP URL on `hyperstarai.io` or
-`hyper-star.org`. Install the npm package and point Claude Code at the
-`hyperstar-mcp` binary.
+For local stdio use, install the npm package and point Claude Code at the
+`hyperstar-mcp` binary. For hosted OAuth, use the setup above.
 
 macOS, Linux, and WSL:
 
@@ -282,6 +306,17 @@ import uses `search_id` server-side, so the agent does not need to paste an
 entire creator list into its context window.
 
 ## Privacy Policy
+
+Hosted connector: Hyperstar processes the selected workspace's account identity, creator
+search results, campaign data, email recipients/content and inbox data needed for requested
+tools. Tool results are shared with the agent provider you connect; that provider's privacy
+and retention terms also apply. Hyperstar stores the app identity, workspace permissions,
+grant timestamps and hashed refresh credentials to operate and revoke the connection.
+A short-lived encrypted token pair supports safe concurrent refresh. Authorization secrets
+are separate from browser login credentials. Operational request logs support security and
+reliability. Disconnecting revokes future access but does not delete workspace records,
+queued work or copies already held by the agent provider. Workspace data follows Hyperstar's
+privacy and retention policy; requests for access or deletion use the contact below.
 
 Full Hyperstar privacy terms are published at
 https://app.hyper-star.org/privacy.
