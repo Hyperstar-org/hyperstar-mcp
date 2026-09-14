@@ -9,6 +9,13 @@ This README is self-contained for first-time agent setup. You do not need
 access to the Hyperstar source repository to install the package, configure an
 MCP client, or understand the safe workflow order.
 
+Public source and release assets:
+
+```text
+https://github.com/Hyperstar-org/hyperstar-mcp
+https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.2.0
+```
+
 ## Hosted connector
 
 Connect to `https://mcp.hyper-star.org/mcp` using OAuth. Sign in to your Hyperstar account,
@@ -27,7 +34,7 @@ no local Node.js installation or API key.
   browser sign-in. Use `codex mcp login hyperstar` to reconnect.
 
 Start with `hyperstar_whoami` and `get_hyperstar_workflow_guide`. The workspace is bound
-at consent; disconnect in Hyperstar account settings → Connected apps and reconnect to
+at consent; disconnect in Hyperstar Settings → MCP and reconnect to
 switch workspaces. Disconnect stops future access, while requests already running and
 queued emails may finish. The connector can send real emails: review recipients and
 message content before authorizing a send.
@@ -49,14 +56,14 @@ Claude Desktop users should download and install the production Desktop
 Extension:
 
 ```text
-https://app.hyper-star.org/mcp/hyperstar-mcp-0.1.22.mcpb
+https://app.hyper-star.org/mcp/hyperstar-mcp-0.2.0.mcpb
 ```
 
 The extension still runs Hyperstar MCP as a local stdio server; it is not a
 remote HTTP endpoint.
 
-For local builds from this repository, run `npm run build:mcpb` and
-`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.1.22.mcpb`.
+For local builds from this package source, run `npm run build:mcpb` and
+`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.2.0.mcpb`.
 
 If you have a service-account API key from Team -> API keys, paste it into the
 extension settings as `HYPERSTAR_API_KEY`. Service-account mode is the simplest
@@ -226,6 +233,8 @@ local browser login or `HYPERSTAR_API_KEY`. Tool responses include
 - `create_campaign`
 - `save_search_results_to_campaign`
 - `list_campaign_creators`
+- `start_email_unlock`
+- `get_email_unlock_job`
 - `check_bulk_email_readiness`
 - `start_bulk_email`
 - `get_bulk_email_job`
@@ -288,6 +297,8 @@ resources. The server exposes these main workflow tools:
 - `create_campaign`
 - `save_search_results_to_campaign`
 - `list_campaign_creators`
+- `start_email_unlock`
+- `get_email_unlock_job`
 - `check_bulk_email_readiness`
 - `start_bulk_email`
 - `get_bulk_email_job`
@@ -362,6 +373,25 @@ Search creators:
 }
 ```
 
+YouTube creator discovery uses keyword retrieval and stable channel IDs:
+
+```json
+{
+  "tool": "search_creators",
+  "arguments": {
+    "kind": "keyword",
+    "platform": "youtube",
+    "region": "US",
+    "query": "home coffee equipment reviews",
+    "filters": {
+      "follower_range": { "min": 1000, "max": 100000 },
+      "has_email": true
+    },
+    "limit": 25
+  }
+}
+```
+
 Common search filters are supplied as a structured JSON object. Useful fields
 include `follower_range` as `{ "min": 1000, "max": 100000 }`,
 `avg_engagement_rate`, `avg_views`, `has_email`, `email_contactability`,
@@ -371,6 +401,9 @@ TikTok-only. Put broad niches and countries in `query` / `region` unless a
 named structured filter applies. Use `sort_by` for `relevance`,
 `follower_count`, `engagement_rate`, `avg_views`, `views_growth_rate`, `gmv`, or
 `gpm`.
+
+YouTube supports `follower_range`, `creator_language`, and `has_email` only;
+reference/product search and metric sorting are unavailable.
 
 Search tools return compact creator summaries by default so agents do not load
 full profile payloads into context. Use `get_search_results` with
@@ -412,6 +445,29 @@ Save search results to a campaign roster:
     "campaign_id": 123,
     "search_id": "550e8400-e29b-41d4-a716-446655440000",
     "limit": 100
+  }
+}
+```
+
+Unlock eligible real catalog addresses before checking readiness. This action
+requires an explicit cost cap and confirmation; `has_business_email` is never
+treated as an address:
+
+```json
+{
+  "tool": "start_email_unlock",
+  "arguments": {
+    "campaign_id": 123,
+    "recipient_target": {
+      "type": "selection",
+      "campaign_creator_selection": {
+        "workflow_filter": "email_not_sent",
+        "platform": "youtube"
+      }
+    },
+    "maximum_chargeable_unlocks": 25,
+    "confirm_cost": true,
+    "idempotency_key": "campaign-123-youtube-unlock-1"
   }
 }
 ```
@@ -466,7 +522,7 @@ Read a full inbox thread before replying:
 {
   "tool": "get_inbox_thread_messages",
   "arguments": {
-    "platform": "tiktok",
+    "platform": "youtube",
     "thread_id": 456
   }
 }
@@ -538,3 +594,17 @@ npm run smoke:npm
 `npm run smoke:npm` verifies the published npm package can be resolved and that
 both package binaries print help without requiring local build artifacts,
 authentication, or real workflow API calls.
+
+## Expanded workflows (0.2.0)
+
+The source includes campaign settings and roster edits, fixed selection copy/removal,
+windowed performance and revenue, follow-up wave controls, creator lookup, forms,
+and authenticated file uploads/downloads. CSV/XLSX creator imports support direct
+uploads and browser handoffs, with durable progress, quota settlement and result CSVs.
+Workspace usage and capacity checks include bounded unlock estimates without spending
+credits. Use the task-specific MCP resources for campaign management, reporting,
+forms/files or imports/usage instead of loading every guide.
+
+Old grants keep their permissions; reconnect or explicitly add the new performance,
+form and `usage:read` permissions to an API key when needed. Follow-up email remains
+dev-only until provider threading verification is complete.

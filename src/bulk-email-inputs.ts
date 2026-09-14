@@ -25,10 +25,12 @@ const SendConfirmationSchema = z
   .literal("user_authorized")
   .describe('Required literal "user_authorized" after explicit user approval.');
 
-const CampaignCreatorWorkflowFilterSchema = z.enum([
+export const CampaignCreatorWorkflowFilterSchema = z.enum([
   "all",
   "email",
   "email_not_sent",
+  "send_unavailable",
+  "delivery_failed",
   "email_sent",
   "replied",
   "negotiating",
@@ -49,7 +51,7 @@ const CampaignCreatorSelectionSchema = z
   .object({
     workflow_filter: CampaignCreatorWorkflowFilterSchema.optional(),
     outreach_stage: z.string().trim().min(1).optional(),
-    platform: z.enum(["tiktok", "instagram"]).optional(),
+    platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
     country: z.string().trim().min(1).optional(),
     has_video: z.boolean().optional(),
     source_type: z
@@ -101,7 +103,7 @@ const CampaignRecipientSelectionTargetSchema = z
   })
   .strict();
 
-const CampaignRecipientTargetSchema = z
+export const CampaignRecipientTargetSchema = z
   .union([
     z
       .object({
@@ -140,21 +142,59 @@ function validateFormLanguage(
   }
 }
 
+function validateWave(
+  value: {
+    kind?: "initial" | "follow_up" | undefined;
+    threading?: "new_or_existing" | "require_existing" | undefined;
+    requested_parent_wave_id?: string | undefined;
+    from_email?: string | undefined;
+    email_account_id?: string | undefined;
+  },
+  context: z.RefinementCtx,
+): void {
+  if (
+    (value.kind ?? "initial") === "follow_up"
+      ? value.threading !== "require_existing"
+      : (value.threading !== undefined &&
+          value.threading !== "new_or_existing") ||
+        value.requested_parent_wave_id !== undefined
+  ) {
+    context.addIssue({
+      code: "custom",
+      message:
+        "Follow-ups require kind follow_up and threading require_existing; initial sends cannot have a parent wave.",
+    });
+  }
+  if (value.from_email !== undefined && value.email_account_id !== undefined)
+    context.addIssue({
+      code: "custom",
+      message: "Choose from_email or email_account_id, not both.",
+    });
+}
+
 const CheckBulkEmailReadinessBaseSchema = z.object({
   campaign_id: CampaignIdSchema,
+  email_account_id: z.string().uuid().optional(),
+  kind: z.enum(["initial", "follow_up"]).optional(),
+  threading: z.enum(["new_or_existing", "require_existing"]).optional(),
+  requested_parent_wave_id: z.string().uuid().optional(),
 });
 
-export const CheckBulkEmailReadinessInputSchema = z.union([
-  CheckBulkEmailReadinessBaseSchema.merge(CampaignRecipientIdsTargetSchema),
-  CheckBulkEmailReadinessBaseSchema.merge(
-    CampaignRecipientSelectionTargetSchema,
-  ),
-]);
+export const CheckBulkEmailReadinessInputSchema = z
+  .union([
+    CheckBulkEmailReadinessBaseSchema.merge(CampaignRecipientIdsTargetSchema),
+    CheckBulkEmailReadinessBaseSchema.merge(
+      CampaignRecipientSelectionTargetSchema,
+    ),
+  ])
+  .superRefine(validateWave);
 
 export const CheckBulkEmailReadinessDiscoveryInputSchema =
   CheckBulkEmailReadinessBaseSchema.extend({
     recipient_target: CampaignRecipientTargetSchema,
-  }).strict();
+  })
+    .strict()
+    .superRefine(validateWave);
 
 const StartBulkEmailBaseSchema = z
   .object({
@@ -162,6 +202,10 @@ const StartBulkEmailBaseSchema = z
     subject: EmailSubjectSchema,
     body_text: z.string().trim().min(1),
     from_email: z.string().trim().min(1).optional(),
+    email_account_id: z.string().uuid().optional(),
+    kind: z.enum(["initial", "follow_up"]).optional(),
+    threading: z.enum(["new_or_existing", "require_existing"]).optional(),
+    requested_parent_wave_id: z.string().uuid().optional(),
     attachments: z.array(z.string().trim().min(1)).optional(),
     form_id: z.number().int().positive().optional(),
     form_language: z.enum(["en", "ko", "jp"]).optional(),
@@ -175,14 +219,16 @@ export const StartBulkEmailInputSchema = z
     StartBulkEmailBaseSchema.merge(CampaignRecipientIdsTargetSchema),
     StartBulkEmailBaseSchema.merge(CampaignRecipientSelectionTargetSchema),
   ])
-  .superRefine(validateFormLanguage);
+  .superRefine(validateFormLanguage)
+  .superRefine(validateWave);
 
 export const StartBulkEmailDiscoveryInputSchema =
   StartBulkEmailBaseSchema.extend({
     recipient_target: CampaignRecipientTargetSchema,
   })
     .strict()
-    .superRefine(validateFormLanguage);
+    .superRefine(validateFormLanguage)
+    .superRefine(validateWave);
 
 export type CheckBulkEmailReadinessInput = z.infer<
   typeof CheckBulkEmailReadinessInputSchema
@@ -205,11 +251,27 @@ export function normalizeCheckBulkEmailReadinessInput(
   if (input.recipient_target.type === "ids") {
     return {
       campaign_id: input.campaign_id,
+      ...(input.email_account_id === undefined
+        ? {}
+        : { email_account_id: input.email_account_id }),
+      ...(input.kind === undefined ? {} : { kind: input.kind }),
+      ...(input.threading === undefined ? {} : { threading: input.threading }),
+      ...(input.requested_parent_wave_id === undefined
+        ? {}
+        : { requested_parent_wave_id: input.requested_parent_wave_id }),
       campaign_creator_ids: input.recipient_target.campaign_creator_ids,
     };
   }
   return {
     campaign_id: input.campaign_id,
+    ...(input.email_account_id === undefined
+      ? {}
+      : { email_account_id: input.email_account_id }),
+    ...(input.kind === undefined ? {} : { kind: input.kind }),
+    ...(input.threading === undefined ? {} : { threading: input.threading }),
+    ...(input.requested_parent_wave_id === undefined
+      ? {}
+      : { requested_parent_wave_id: input.requested_parent_wave_id }),
     campaign_creator_selection:
       input.recipient_target.campaign_creator_selection,
   };
@@ -224,6 +286,10 @@ export function normalizeStartBulkEmailInput(
     subject: input.subject,
     body_text: input.body_text,
     from_email: input.from_email,
+    email_account_id: input.email_account_id,
+    kind: input.kind,
+    threading: input.threading,
+    requested_parent_wave_id: input.requested_parent_wave_id,
     attachments: input.attachments,
     form_id: input.form_id,
     form_language: input.form_language,

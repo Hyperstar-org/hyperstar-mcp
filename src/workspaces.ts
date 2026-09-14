@@ -1,5 +1,6 @@
 import type { CliWorkspaceSelection, HyperstarMcpConfig } from "./config.js";
 import type { HyperstarClient, JsonObject } from "./http.js";
+import type { Surface } from "./surface.js";
 import { WorkspaceListResponseSchema } from "./schemas.js";
 import {
   BROWSER_LOGIN_WORKFLOW_SEQUENCE,
@@ -10,6 +11,7 @@ import {
 } from "./workflow-content.js";
 
 export type WorkspaceToolOptions = {
+  readonly surface?: Surface;
   readonly authMode?: HyperstarMcpConfig["authMode"];
   readonly workspaceSelection?: CliWorkspaceSelection;
   readonly getAuthMode?: () =>
@@ -79,6 +81,7 @@ export async function selectAvailableWorkspace(
 export async function getHyperstarWorkflowGuide(
   options: WorkspaceToolOptions = {},
 ): Promise<JsonObject> {
+  if (options.surface === "hosted") return workflowGuideJson("hosted");
   const authMode = await resolveAuthMode(options);
   const workspaceSelection = await resolveWorkspaceSelection(options);
   if (authMode === "unauthenticated") {

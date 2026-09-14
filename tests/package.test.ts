@@ -17,10 +17,12 @@ type PackageJson = {
   readonly description?: string;
   readonly keywords?: readonly string[];
   readonly license?: string;
-  readonly main?: string;
   readonly repository?: {
+    readonly type?: string;
     readonly url?: string;
+    readonly directory?: string;
   };
+  readonly main?: string;
   readonly types?: string;
   readonly exports?: {
     readonly ".": { readonly import: string; readonly types: string };
@@ -48,51 +50,18 @@ describe("package metadata", () => {
     });
   });
 
-  it("publishes a self-contained first-tester README for npm", () => {
+  it("includes the standalone smoke entrypoint in the published package", () => {
     const packageJson = JSON.parse(
       readFileSync(new URL("../package.json", import.meta.url), "utf8"),
     ) as PackageJson;
-    const readme = readFileSync(
-      new URL("../README.md", import.meta.url),
-      "utf8",
-    );
-    expect(packageJson.repository?.url).toContain(
-      "github.com/Hyperstar-org/hyperstar-mcp",
-    );
-    expect(readme).not.toContain("Development discovery");
-    expect(readme).toContain("## Requirements");
-    expect(readme).toContain("## Claude Desktop Extension");
-    expect(readme).toContain(".mcpb");
-    expect(readme).toContain(
-      "https://app.hyper-star.org/mcp/hyperstar-mcp-0.1.22.mcpb",
-    );
-    expect(readme).toContain("build/mcpb/hyperstar-mcp-0.1.22.mcpb");
-    expect(readme).toContain("start_browser_login");
-    expect(readme).toContain("complete_browser_login");
-    expect(readme).toContain("## Install And Login");
-    expect(readme).toContain("## First Agent Prompts");
-    expect(readme).toContain("## Workflow Safety");
-    expect(readme).toContain("## Privacy Policy");
-    expect(readme).toContain("Data collection");
-    expect(readme).toContain("Usage and storage");
-    expect(readme).toContain("Third-party sharing");
-    expect(readme).toContain("Data retention");
-    expect(readme).toContain("support@hyper-star.org");
-    expect(readme).toContain("## Clean-Room Smoke Check");
-    expect(readme).toContain("## Troubleshooting");
-    expect(readme).toContain("## Claude Code Quickstart");
-    expect(readme).toContain("claude mcp add hyperstar");
-    expect(readme).toContain("npx.cmd");
-    expect(readme).toContain(
-      "local stdio MCP server, not a remote HTTP endpoint",
-    );
-    expect(readme).toContain("@hyperstar/mcp");
-    expect(readme).toContain("not a remote HTTP endpoint");
-    expect(readme).toContain("https://app.hyper-star.org/privacy");
     expect(packageJson.files).toContain("scripts/npm-clean-room-smoke.mjs");
     expect(packageJson.scripts?.["smoke:npm"]).toBe(
       "node scripts/npm-clean-room-smoke.mjs",
     );
+    expect(packageJson.repository).toEqual({
+      type: "git",
+      url: "git+https://github.com/Hyperstar-org/hyperstar-mcp.git",
+    });
     expect(
       existsSync(
         new URL("../scripts/npm-clean-room-smoke.mjs", import.meta.url),

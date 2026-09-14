@@ -25,6 +25,12 @@ type RecordedCall =
     };
 
 class RecordingHyperstarClient implements HyperstarClient {
+  async put(): Promise<JsonValue> {
+    throw new Error("Unexpected PUT");
+  }
+  async delete(): Promise<JsonValue> {
+    throw new Error("Unexpected DELETE");
+  }
   readonly calls: RecordedCall[] = [];
   private readonly responses: JsonValue[];
 
@@ -248,6 +254,7 @@ describe("workspace-aware MCP runtime", () => {
       "list_campaigns or create_campaign",
       "save_search_results_to_campaign",
       "list_campaign_creators",
+      "start_email_unlock and poll get_email_unlock_job when selected recipients are locked",
       "check_bulk_email_readiness",
       "WARNING: start_bulk_email and send_inbox_reply perform real sends.",
     ]);
@@ -280,6 +287,7 @@ describe("workspace-aware MCP runtime", () => {
       "list_campaigns or create_campaign",
       "save_search_results_to_campaign",
       "list_campaign_creators",
+      "start_email_unlock and poll get_email_unlock_job when selected recipients are locked",
       "check_bulk_email_readiness",
       "WARNING: start_bulk_email and send_inbox_reply perform real sends.",
     ]);
@@ -299,6 +307,7 @@ describe("workspace-aware MCP runtime", () => {
       "list_campaigns or create_campaign",
       "save_search_results_to_campaign",
       "list_campaign_creators",
+      "start_email_unlock and poll get_email_unlock_job when selected recipients are locked",
       "check_bulk_email_readiness",
       "WARNING: start_bulk_email and send_inbox_reply perform real sends.",
     ]);

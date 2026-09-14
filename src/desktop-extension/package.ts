@@ -39,6 +39,9 @@ export async function stageDesktopExtensionBundle(
   await Promise.all([
     cp(join(packageRoot, "dist"), join(outputRoot, "dist"), {
       recursive: true,
+      filter: (source) =>
+        relative(join(packageRoot, "dist"), source).split(/[\\/]/)[0] !==
+        "hosted",
     }),
     cp(nodeModulesRoot, join(outputRoot, "node_modules"), {
       recursive: true,

@@ -10,7 +10,15 @@ import type {
 export function readinessRequestBody(
   input: CheckBulkEmailReadinessInput,
 ): JsonObject {
-  return campaignRecipientTargetBody(input);
+  return {
+    ...campaignRecipientTargetBody(input),
+    ...compactJsonObject([
+      ["email_account_id", input.email_account_id],
+      ["kind", input.kind],
+      ["threading", input.threading],
+      ["requested_parent_wave_id", input.requested_parent_wave_id],
+    ]),
+  };
 }
 
 /** Build the campaign bulk-email job request body. */
@@ -21,6 +29,10 @@ export function startBulkEmailRequestBody(
     ["subject", input.subject],
     ["body_text", input.body_text],
     ["from_email", input.from_email],
+    ["email_account_id", input.email_account_id],
+    ["kind", input.kind],
+    ["threading", input.threading],
+    ["requested_parent_wave_id", input.requested_parent_wave_id],
     ["attachments", input.attachments],
     ...campaignRecipientTargetEntries(input),
     ["form_id", input.form_id],

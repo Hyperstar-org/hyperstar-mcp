@@ -42,6 +42,10 @@ export const WhoamiResponseSchema = z.object({
     bulk_email: z.boolean(),
     inbox_read: z.boolean(),
     inbox_write: z.boolean(),
+    performance_read: z.boolean().default(false),
+    forms_read: z.boolean().default(false),
+    forms_write: z.boolean().default(false),
+    usage_read: z.boolean().default(false),
   }),
 });
 

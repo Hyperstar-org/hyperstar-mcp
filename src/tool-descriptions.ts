@@ -12,7 +12,7 @@ export const TOOL_DESCRIPTIONS = {
   workflowGuide:
     "Return the recommended Hyperstar workflow sequence, discovery resources, and send-safety notes.",
   searchCreators:
-    "Create a creator search and return the first page as compact creator summaries. Filters use structured keys such as follower_range, avg_engagement_rate, avg_views, has_email, email_contactability, creator_language, category_1, category_name, gmv, and gpm. Put broad niches in query unless a platform-specific category field applies. Use search_id with save_search_results_to_campaign; request detail_level full only when raw rows are needed.",
+    "Create a creator search and return compact creator summaries. Use kind=keyword for YouTube, whose supported arguments are region and query and whose supported structured filters are follower_range, creator_language, and has_email; YouTube reference search and metric sorting are unavailable. TikTok/Instagram use semantic or reference search and their existing richer filters. Use search_id with save_search_results_to_campaign.",
   getSearchResults:
     "Page through an existing creator search. Defaults to compact creator summaries; use detail_level full only for raw detail-on-demand pages.",
   listCampaigns:
@@ -23,6 +23,10 @@ export const TOOL_DESCRIPTIONS = {
     "Save selected or top-ranked creator search results to a campaign roster server-side using search_id.",
   listCampaignCreators:
     "List creators saved on a campaign roster. Call check_bulk_email_readiness before any bulk-email send.",
+  startEmailUnlock:
+    "Create an idempotent campaign email-unlock job after explicit cost confirmation. Unlocks only real catalog email addresses, including eligible YouTube channel emails.",
+  getEmailUnlockJob:
+    "Read a durable campaign email-unlock job status before checking bulk-email readiness.",
   checkBulkEmailReadiness:
     "The final dry-run gate before bulk email. Requires recipient_target with exact IDs or a narrowed selection, checks those selected recipients, and returns sendability guidance.",
   startBulkEmail:

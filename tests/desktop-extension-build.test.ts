@@ -126,6 +126,25 @@ describe("stageDesktopExtensionBundle", () => {
       }),
     ).resolves.toMatchObject({ stagedRoot: outputRoot });
   });
+
+  it("rejects external output roots for the real package build context", async () => {
+    const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+    const outputRoot = await mkdtemp(
+      join(tmpdir(), "hyperstar-mcp-external-output-"),
+    );
+    const sentinelPath = join(outputRoot, "sentinel.txt");
+    await writeFile(sentinelPath, "do not delete\n");
+
+    await expect(
+      stageDesktopExtensionBundle({
+        packageRoot: projectRoot,
+        outputRoot,
+        nodeModulesRoot: join(projectRoot, "node_modules"),
+      }),
+    ).rejects.toThrow(/Unsafe desktop extension outputRoot/);
+
+    expect(existsSync(sentinelPath)).toBe(true);
+  });
 });
 
 describe("validate-mcpb script", () => {

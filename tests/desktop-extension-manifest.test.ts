@@ -1,3 +1,4 @@
+import { HYPERSTAR_TOOL_ORDER } from "../src/tool-metadata.js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -18,6 +19,8 @@ const workflowToolNames = [
   "save_search_results_to_campaign",
   "list_campaign_creators",
   "check_bulk_email_readiness",
+  "start_email_unlock",
+  "get_email_unlock_job",
   "start_bulk_email",
   "get_bulk_email_job",
   "list_inbox_threads",
@@ -96,11 +99,9 @@ describe("buildDesktopExtensionManifest", () => {
       ),
     ).toEqual(["homepage", "documentation", "support", "privacy_policies"]);
     expect(manifest.tools).toEqual(desktopExtensionToolDeclarations);
-    expect(desktopExtensionToolDeclarations.map((tool) => tool.name)).toEqual([
-      "start_browser_login",
-      "complete_browser_login",
-      ...workflowToolNames,
-    ]);
+    expect(desktopExtensionToolDeclarations.map((tool) => tool.name)).toEqual(
+      HYPERSTAR_TOOL_ORDER,
+    );
   });
 
   it("maps extension user config into env while declaring safe defaults", () => {

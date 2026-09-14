@@ -1,6 +1,8 @@
+import { RosterFiltersSchema } from "./campaign-inputs.js";
 import { z } from "zod";
 
 import {
+  CampaignRecipientTargetSchema,
   EmailSubjectSchema,
   IdempotencyKeySchema,
   type CheckBulkEmailReadinessInput,
@@ -8,6 +10,11 @@ import {
 } from "./bulk-email-inputs.js";
 import type { JsonObject } from "./http.js";
 import { JsonObjectSchema } from "./schemas.js";
+import { SearchFiltersInputSchema } from "./search-filters-input.js";
+import {
+  SearchKindSchema,
+  SearchSortBySchema,
+} from "./search-filter-primitives.js";
 
 export {
   CheckBulkEmailReadinessDiscoveryInputSchema,
@@ -22,13 +29,8 @@ export {
 } from "./bulk-email-inputs.js";
 
 const PositivePageLimitSchema = z.number().int().min(1);
-const SearchKindSchema = z
-  .enum(["semantic", "reference"])
-  .describe(
-    "Use semantic with a natural-language query; use reference only when passing a reference object.",
-  );
-const SearchPlatformSchema = z.enum(["tiktok", "instagram"]);
-const InboxPlatformSchema = z.enum(["tiktok", "instagram", "buyer"]);
+const SearchPlatformSchema = z.enum(["tiktok", "instagram", "youtube"]);
+const InboxPlatformSchema = z.enum(["tiktok", "instagram", "youtube", "buyer"]);
 const SendConfirmationSchema = z
   .literal("user_authorized")
   .describe(
@@ -39,7 +41,6 @@ const SearchIdSchema = z
   .describe(
     "Search UUID returned by search_creators; pass it instead of pasting creator rows.",
   );
-// Backend workspace identifiers are organization IDs such as "org_123", not UUIDs.
 const WorkspaceOrganizationIdSchema = z.string().trim().min(1);
 const SearchRegionSchema = z
   .string()
@@ -50,92 +51,6 @@ const SearchRegionSchema = z
 const SearchCreateLimitSchema = PositivePageLimitSchema.max(10000);
 const SearchResultLimitSchema = PositivePageLimitSchema.max(100);
 const SearchResultDetailLevelSchema = z.enum(["summary", "full"]);
-const SearchSortBySchema = z.enum([
-  "relevance",
-  "matchScore",
-  "follower_count",
-  "engagement_rate",
-  "avg_views",
-  "views_growth_rate",
-  "gmv",
-  "gpm",
-]);
-const RangeFilterSchema = z
-  .object({
-    min: z.number().finite().nullable().optional(),
-    max: z.number().finite().nullable().optional(),
-  })
-  .strict();
-const AudienceRatioFilterSchema = z
-  .object({
-    min: z.number().finite().min(0).max(1).nullable().optional(),
-    max: z.number().finite().min(0).max(1).nullable().optional(),
-  })
-  .strict();
-const SearchFiltersInputSchema = z
-  .object({
-    has_email: z.boolean().optional(),
-    email_contactability: z.enum(["unlocked", "locked", "missing"]).optional(),
-    min_media_count: z.number().int().min(0).optional(),
-    follower_range: z
-      .object({
-        min: z.number().int().min(0).nullable().optional(),
-        max: z.number().int().min(0).nullable().optional(),
-      })
-      .strict()
-      .optional(),
-    is_sales: z.boolean().optional(),
-    gmv: RangeFilterSchema.optional(),
-    gpm: RangeFilterSchema.optional(),
-    is_verified: z.boolean().optional(),
-    has_tiktok_shop: z.boolean().optional(),
-    commercial_user: z.boolean().optional(),
-    creator_gender: z.enum(["male", "female"]).optional(),
-    creator_language: z.string().trim().min(1).optional(),
-    category_1: z.string().trim().min(1).optional(),
-    category_1_not_in: z.array(z.string().trim().min(1)).optional(),
-    category_2: z.string().trim().min(1).optional(),
-    category_2_not_in: z.array(z.string().trim().min(1)).optional(),
-    avg_views: RangeFilterSchema.optional(),
-    avg_engagement_rate: RangeFilterSchema.optional(),
-    avg_likes: RangeFilterSchema.optional(),
-    avg_comments: RangeFilterSchema.optional(),
-    avg_shares: RangeFilterSchema.optional(),
-    is_business_account: z.boolean().optional(),
-    category_name: z.string().trim().min(1).optional(),
-    views_growth_rate: RangeFilterSchema.optional(),
-    engagement_growth_rate: RangeFilterSchema.optional(),
-    audience_ratio_male: AudienceRatioFilterSchema.optional(),
-    audience_ratio_female: AudienceRatioFilterSchema.optional(),
-    audience_ratio_unknown: AudienceRatioFilterSchema.optional(),
-    audience_ratio_10s: AudienceRatioFilterSchema.optional(),
-    audience_ratio_20s: AudienceRatioFilterSchema.optional(),
-    audience_ratio_30s: AudienceRatioFilterSchema.optional(),
-    audience_ratio_40s: AudienceRatioFilterSchema.optional(),
-    audience_ratio_50s: AudienceRatioFilterSchema.optional(),
-    audience_ratio_60_plus: AudienceRatioFilterSchema.optional(),
-    audience_ratio_15_24: AudienceRatioFilterSchema.optional(),
-    audience_ratio_25_34: AudienceRatioFilterSchema.optional(),
-    audience_ratio_35_44: AudienceRatioFilterSchema.optional(),
-    audience_ratio_45_54: AudienceRatioFilterSchema.optional(),
-    audience_ratio_55_plus: AudienceRatioFilterSchema.optional(),
-    audience_ratio_us: AudienceRatioFilterSchema.optional(),
-    audience_ratio_gb: AudienceRatioFilterSchema.optional(),
-    audience_ratio_kr: AudienceRatioFilterSchema.optional(),
-    audience_ratio_jp: AudienceRatioFilterSchema.optional(),
-    audience_ratio_de: AudienceRatioFilterSchema.optional(),
-    audience_ratio_br: AudienceRatioFilterSchema.optional(),
-    audience_ratio_fr: AudienceRatioFilterSchema.optional(),
-    audience_ratio_in: AudienceRatioFilterSchema.optional(),
-    audience_ratio_id: AudienceRatioFilterSchema.optional(),
-    audience_ratio_mx: AudienceRatioFilterSchema.optional(),
-    audience_ratio_active: AudienceRatioFilterSchema.optional(),
-  })
-  .strict()
-  .transform((value) => JsonObjectSchema.parse(value))
-  .describe(
-    "structured filters only; put broad niches in query and countries in region.",
-  );
 const CampaignIdSchema = z
   .number()
   .int()
@@ -159,10 +74,23 @@ export const SearchCreatorsInputSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.kind === "semantic" && value.query === undefined) {
+    if (
+      value.platform !== "tiktok" &&
+      value.filters?.has_recent_shop_videos !== undefined
+    ) {
       context.addIssue({
         code: "custom",
-        message: "semantic searches require query",
+        message: "has_recent_shop_videos is only available for TikTok searches",
+        path: ["filters", "has_recent_shop_videos"],
+      });
+    }
+    if (
+      (value.kind === "semantic" || value.kind === "keyword") &&
+      value.query === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: `${value.kind} searches require query`,
         path: ["query"],
       });
     }
@@ -172,6 +100,59 @@ export const SearchCreatorsInputSchema = z
         message: "reference searches require reference",
         path: ["reference"],
       });
+    }
+    if (value.platform === "youtube" && value.kind !== "keyword") {
+      context.addIssue({
+        code: "custom",
+        message: "YouTube supports keyword creator search only",
+        path: ["kind"],
+      });
+    }
+    if (value.platform !== "youtube" && value.kind === "keyword") {
+      context.addIssue({
+        code: "custom",
+        message: "keyword creator search is available only for YouTube",
+        path: ["kind"],
+      });
+    }
+    if (value.kind !== "reference" && value.reference !== undefined) {
+      context.addIssue({
+        code: "custom",
+        message: `${value.kind} searches do not accept a reference`,
+        path: ["reference"],
+      });
+    }
+    if (
+      value.platform === "youtube" &&
+      value.sort_by !== undefined &&
+      value.sort_by !== "relevance" &&
+      value.sort_by !== "matchScore"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "metric sorting is unavailable for YouTube searches",
+        path: ["sort_by"],
+      });
+    }
+    if (value.platform === "youtube" && value.filters !== undefined) {
+      const supported = new Set([
+        "has_email",
+        "follower_range",
+        "creator_language",
+      ]);
+      for (const [key, filterValue] of Object.entries(value.filters)) {
+        if (
+          !supported.has(key) &&
+          filterValue !== undefined &&
+          filterValue !== null
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: `filter ${key} is unavailable for YouTube searches`,
+            path: ["filters", key],
+          });
+        }
+      }
     }
     if (
       value.platform !== "tiktok" &&
@@ -195,6 +176,48 @@ export const SearchCreatorsInputSchema = z
         code: "custom",
         message: "gpm filters are only available for TikTok searches",
         path: ["filters", "gpm"],
+      });
+    }
+    if (
+      value.platform === "youtube" &&
+      value.filters?.recent_post_tags !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "recent_post_tags is unavailable for YouTube searches",
+        path: ["filters", "recent_post_tags"],
+      });
+    }
+    if (
+      value.filters?.recent_post_tags !== undefined &&
+      value.filters.email_contactability !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "recent_post_tags cannot be combined with email_contactability",
+        path: ["filters", "email_contactability"],
+      });
+    }
+    if (
+      value.sort_by === "tag_match_ratio" &&
+      value.filters?.recent_post_tags === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "tag_match_ratio requires recent_post_tags",
+        path: ["sort_by"],
+      });
+    }
+    if (
+      value.filters?.category_name_not_in !== undefined &&
+      value.platform !== "instagram"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "category_name_not_in is only available for Instagram searches",
+        path: ["filters", "category_name_not_in"],
       });
     }
   });
@@ -254,17 +277,35 @@ export const CreateCampaignInputSchema = z
   })
   .strict();
 
-export const CampaignCreatorsInputSchema = z
-  .object({
-    campaign_id: CampaignIdSchema,
-    limit: PositivePageLimitSchema.max(2000).optional(),
-    offset: z.number().int().min(0).optional(),
-  })
-  .strict();
+export const CampaignCreatorsInputSchema = RosterFiltersSchema.extend({
+  campaign_id: CampaignIdSchema,
+  limit: PositivePageLimitSchema.max(2000).optional(),
+  offset: z.number().int().min(0).optional(),
+}).strict();
 
 export const BulkEmailJobInputSchema = z
   .object({
     job_id: z.string().trim().min(1),
+  })
+  .strict();
+
+export const StartEmailUnlockInputSchema = z
+  .object({
+    campaign_id: CampaignIdSchema,
+    recipient_target: CampaignRecipientTargetSchema,
+    maximum_chargeable_unlocks: z.number().int().min(0),
+    confirm_cost: z
+      .literal(true)
+      .describe(
+        "Required explicit confirmation that email-unlock credits may be charged.",
+      ),
+    idempotency_key: IdempotencyKeyInputSchema,
+  })
+  .strict();
+
+export const EmailUnlockJobInputSchema = z
+  .object({
+    job_id: z.uuid(),
   })
   .strict();
 
@@ -339,6 +380,8 @@ type ListCampaignsInput = z.infer<typeof ListCampaignsInputSchema>;
 type CreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 type CampaignCreatorsInput = z.infer<typeof CampaignCreatorsInputSchema>;
 type BulkEmailJobInput = z.infer<typeof BulkEmailJobInputSchema>;
+type StartEmailUnlockInput = z.infer<typeof StartEmailUnlockInputSchema>;
+type EmailUnlockJobInput = z.infer<typeof EmailUnlockJobInputSchema>;
 type InboxFiltersInput = z.infer<typeof InboxFiltersInputSchema>;
 type ListInboxThreadsInput = z.infer<typeof ListInboxThreadsInputSchema>;
 type UpdateInboxThreadStateInput = z.infer<
@@ -375,6 +418,12 @@ export type HyperstarToolHandlers = {
   ) => Promise<JsonObject>;
   readonly startBulkEmail: (input: StartBulkEmailInput) => Promise<JsonObject>;
   readonly getBulkEmailJob: (input: BulkEmailJobInput) => Promise<JsonObject>;
+  readonly startEmailUnlock: (
+    input: StartEmailUnlockInput,
+  ) => Promise<JsonObject>;
+  readonly getEmailUnlockJob: (
+    input: EmailUnlockJobInput,
+  ) => Promise<JsonObject>;
   readonly listInboxThreads: (
     input: ListInboxThreadsInput,
   ) => Promise<JsonObject>;

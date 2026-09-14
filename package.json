@@ -1,6 +1,6 @@
 {
   "name": "@hyperstar/mcp",
-  "version": "0.1.23",
+  "version": "0.2.0",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "description": "Local stdio MCP server and CLI for Hyperstar headless workflows in Claude Code and Claude Desktop.",
@@ -38,6 +38,7 @@
   },
   "files": [
     "dist",
+    "!dist/hosted/**",
     "scripts/npm-clean-room-smoke.mjs",
     "LICENSE",
     "README.md",
@@ -54,11 +55,13 @@
     "validate:mcpb": "node scripts/validate-mcpb.mjs build/mcpb/hyperstar-mcp-${npm_package_version}.mcpb",
     "smoke:dev": "npm run build && node scripts/dev-smoke.mjs",
     "smoke:npm": "node scripts/npm-clean-room-smoke.mjs",
-    "test": "npm run build && vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start:hosted": "node dist/hosted/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "jose": "^6.2.12",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -1,3 +1,7 @@
+import {
+  IMPORT_USAGE_METADATA,
+  IMPORT_USAGE_ORDER,
+} from "./import-usage-metadata.js";
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 
 import { TOOL_DESCRIPTIONS } from "./tool-descriptions.js";
@@ -8,31 +12,21 @@ type HyperstarToolMetadata = {
   readonly annotations: ToolAnnotations & { readonly title: string };
 };
 
-const READ_ONLY = "read_only";
-const WRITE = "write";
-const DESTRUCTIVE = "destructive";
-
-type ToolBehavior = typeof READ_ONLY | typeof WRITE | typeof DESTRUCTIVE;
-
-/** Build MCP tool annotations required for directory review. */
-function annotations(
-  title: string,
-  behavior: ToolBehavior,
-): ToolAnnotations & {
-  readonly title: string;
-} {
-  if (behavior === READ_ONLY) {
-    return { title, readOnlyHint: true };
-  }
-  return {
-    title,
-    readOnlyHint: false,
-    destructiveHint: behavior === DESTRUCTIVE,
-  };
-}
+import {
+  annotations,
+  READ_ONLY,
+  WRITE,
+  DESTRUCTIVE,
+} from "./tool-annotations.js";
+import {
+  EXPANDED_TOOL_METADATA,
+  EXPANDED_TOOL_ORDER,
+} from "./expanded-tool-metadata.js";
 
 /** Shared Hyperstar MCP tool metadata for runtime and MCPB manifests. */
 export const HYPERSTAR_TOOL_METADATA = {
+  ...EXPANDED_TOOL_METADATA,
+  ...IMPORT_USAGE_METADATA,
   start_browser_login: {
     title: "Start Browser Login",
     description: TOOL_DESCRIPTIONS.startBrowserLogin,
@@ -93,6 +87,16 @@ export const HYPERSTAR_TOOL_METADATA = {
     description: TOOL_DESCRIPTIONS.listCampaignCreators,
     annotations: annotations("List Campaign Creators", READ_ONLY),
   },
+  start_email_unlock: {
+    title: "Start Email Unlock",
+    description: TOOL_DESCRIPTIONS.startEmailUnlock,
+    annotations: annotations("Start Email Unlock", DESTRUCTIVE),
+  },
+  get_email_unlock_job: {
+    title: "Get Email Unlock Job",
+    description: TOOL_DESCRIPTIONS.getEmailUnlockJob,
+    annotations: annotations("Get Email Unlock Job", READ_ONLY),
+  },
   check_bulk_email_readiness: {
     title: "Check Bulk Email Readiness",
     description: TOOL_DESCRIPTIONS.checkBulkEmailReadiness,
@@ -152,6 +156,8 @@ export const HYPERSTAR_TOOL_ORDER = [
   "save_search_results_to_campaign",
   "list_campaign_creators",
   "check_bulk_email_readiness",
+  "start_email_unlock",
+  "get_email_unlock_job",
   "start_bulk_email",
   "get_bulk_email_job",
   "list_inbox_threads",
@@ -159,6 +165,8 @@ export const HYPERSTAR_TOOL_ORDER = [
   "get_inbox_aggregates",
   "update_inbox_thread_state",
   "send_inbox_reply",
+  ...EXPANDED_TOOL_ORDER,
+  ...IMPORT_USAGE_ORDER,
 ] as const satisfies readonly HyperstarToolName[];
 
 /** Return runtime metadata for a registered Hyperstar tool. */

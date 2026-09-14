@@ -38,9 +38,27 @@ export function campaignImportGuidance(
 export function campaignRosterGuidance(
   payload: JsonObject,
   campaignId: number,
+  filters?: JsonObject,
 ): JsonObject {
   return {
     ...payload,
+    ...(filters !== undefined &&
+    typeof payload.total === "number" &&
+    typeof payload.offset === "number" &&
+    typeof payload.limit === "number" &&
+    payload.offset + payload.limit < payload.total
+      ? {
+          continuation: {
+            tool: "list_campaign_creators",
+            arguments: {
+              ...filters,
+              campaign_id: campaignId,
+              offset: payload.offset + payload.limit,
+              limit: payload.limit,
+            },
+          },
+        }
+      : {}),
     next_tool: "check_bulk_email_readiness",
     next_arguments: { campaign_id: campaignId },
     next_required_arguments: ["recipient_target"],
@@ -74,6 +92,10 @@ export function readinessGuidance(
     next_tool: "start_bulk_email",
     next_arguments: compactJsonObject([
       ["campaign_id", input.campaign_id],
+      ["kind", input.kind],
+      ["threading", input.threading],
+      ["requested_parent_wave_id", input.requested_parent_wave_id],
+      ["email_account_id", input.email_account_id],
       [
         "recipient_target",
         recipientTargetArgument(campaignCreatorIds, campaignCreatorSelection),

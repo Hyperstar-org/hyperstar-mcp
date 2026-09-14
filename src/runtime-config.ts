@@ -45,6 +45,9 @@ export function createDynamicHyperstarClient(options: {
       (await clientForCurrentConfig()).get(path, query),
     post: async (path, body, headers) =>
       (await clientForCurrentConfig()).post(path, body, headers),
+    put: async (path, body) => (await clientForCurrentConfig()).put(path, body),
+    delete: async (path, body) =>
+      (await clientForCurrentConfig()).delete(path, body),
     patch: async (path, body) =>
       (await clientForCurrentConfig()).patch(path, body),
   };

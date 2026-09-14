@@ -7,6 +7,12 @@ import type { HyperstarClient, JsonValue } from "../src/http.js";
 import { registerHyperstarTools } from "../src/tools.js";
 
 class RecordingHyperstarClient implements HyperstarClient {
+  async put(): Promise<JsonValue> {
+    throw new Error("Unexpected PUT");
+  }
+  async delete(): Promise<JsonValue> {
+    throw new Error("Unexpected DELETE");
+  }
   async get(): Promise<JsonValue> {
     throw new Error("Unexpected GET");
   }

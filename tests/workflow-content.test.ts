@@ -10,10 +10,14 @@ describe("workflow content", () => {
     expect(
       workflowGuideResourceDefinitions.map((resource) => resource.uri),
     ).toEqual([
+      "hyperstar://guide/imports-and-usage",
       "hyperstar://guide/headless-workflow",
       "hyperstar://guide/search-to-campaign",
       "hyperstar://guide/bulk-email-safety",
       "hyperstar://guide/inbox",
+      "hyperstar://guide/campaign-management",
+      "hyperstar://guide/reporting",
+      "hyperstar://guide/forms-and-files",
     ]);
   });
 

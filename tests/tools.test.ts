@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { HyperstarClient, JsonObject, JsonValue } from "../src/http.js";
 import {
@@ -17,8 +16,7 @@ import {
   WorkflowGuideInputSchema,
   WhoamiInputSchema,
 } from "../src/tool-inputs.js";
-import { createHyperstarMcpServer } from "../src/server.js";
-import { createToolHandlers, registerHyperstarTools } from "../src/tools.js";
+import { createToolHandlers } from "../src/tools.js";
 
 type RecordedCall =
   | {
@@ -39,6 +37,12 @@ type RecordedCall =
     };
 
 class RecordingHyperstarClient implements HyperstarClient {
+  async put(): Promise<JsonValue> {
+    throw new Error("Unexpected PUT");
+  }
+  async delete(): Promise<JsonValue> {
+    throw new Error("Unexpected DELETE");
+  }
   readonly calls: RecordedCall[] = [];
   private readonly responses: JsonValue[];
 
@@ -89,6 +93,33 @@ describe("createToolHandlers", () => {
         limit: 10001,
       }),
     ).toThrow();
+    expect(
+      SearchCreatorsInputSchema.parse({
+        kind: "keyword",
+        platform: "youtube",
+        region: "kr",
+        query: "ceramic channels",
+        filters: { follower_range: { min: 1000 }, has_email: true },
+      }),
+    ).toMatchObject({ kind: "keyword", platform: "youtube", region: "KR" });
+    expect(() =>
+      SearchCreatorsInputSchema.parse({
+        kind: "keyword",
+        platform: "youtube",
+        region: "US",
+        query: "ceramic channels",
+        filters: { region: "kr" },
+      }),
+    ).toThrow();
+    expect(() =>
+      SearchCreatorsInputSchema.parse({
+        kind: "keyword",
+        platform: "youtube",
+        region: "US",
+        query: "ceramic channels",
+        filters: { avg_views: { min: 1000 } },
+      }),
+    ).toThrow("unavailable for YouTube");
     expect(
       SearchCreatorsInputSchema.parse({
         kind: "semantic",
@@ -463,6 +494,35 @@ describe("createToolHandlers", () => {
     expect(resultsCall.query?.get("limit")).toBe("100");
   });
 
+  it("searchCreators forwards YouTube keyword search without metric options", async () => {
+    const searchId = "550e8400-e29b-41d4-a716-446655440000";
+    const client = new RecordingHyperstarClient([
+      { search_id: searchId },
+      { creators: [], total: 0, offset: 0, limit: 25 },
+    ]);
+
+    await createToolHandlers(client).searchCreators({
+      kind: "keyword",
+      platform: "youtube",
+      region: "KR",
+      query: "home cooking channels",
+      filters: { has_email: true },
+    });
+
+    expect(client.calls[0]).toEqual({
+      method: "POST",
+      path: "/v1/searches",
+      body: {
+        kind: "keyword",
+        platform: "youtube",
+        region: "KR",
+        query: "home cooking channels",
+        filters: { has_email: true },
+      },
+      headers: undefined,
+    });
+  });
+
   it("saveSearchResultsToCampaign uses the backend search-selection import contract", async () => {
     const searchId = "550e8400-e29b-41d4-a716-446655440000";
     const client = new RecordingHyperstarClient([{ imported: 2 }]);
@@ -656,6 +716,49 @@ describe("createToolHandlers", () => {
     ]);
   });
 
+  it("startEmailUnlock posts a bounded YouTube campaign selection", async () => {
+    const client = new RecordingHyperstarClient([
+      { job_id: "550e8400-e29b-41d4-a716-446655440000", status: "pending" },
+    ]);
+
+    await createToolHandlers(client).startEmailUnlock({
+      campaign_id: 77,
+      recipient_target: {
+        type: "selection",
+        campaign_creator_selection: {
+          workflow_filter: "email_not_sent",
+          platform: "youtube",
+          excluded_ids: [9],
+        },
+      },
+      maximum_chargeable_unlocks: 25,
+      confirm_cost: true,
+      idempotency_key: "unlock-youtube-77",
+    });
+
+    expect(client.calls).toEqual([
+      {
+        method: "POST",
+        path: "/v1/email-unlocks/bulk-actions",
+        body: {
+          target: {
+            type: "campaign",
+            campaign_id: 77,
+            campaign_creator_selection: {
+              workflow_filter: "email_not_sent",
+              platform: "youtube",
+              excluded_creator_ids: [9],
+            },
+          },
+          confirm_cost: true,
+          maximum_chargeable_unlocks: 25,
+          idempotency_key: "unlock-youtube-77",
+        },
+        headers: undefined,
+      },
+    ]);
+  });
+
   it("getBulkEmailJob encodes unsafe job IDs without changing the path shape", async () => {
     const client = new RecordingHyperstarClient([{ job_id: "abc/../x" }]);
 
@@ -684,69 +787,3 @@ describe("createToolHandlers", () => {
     ]);
   });
 });
-
-describe("registerHyperstarTools", () => {
-  it("registers auth helper tools before workflow tools on the MCP server", () => {
-    const server = createHyperstarMcpServer({
-      authMode: "service_account",
-      apiBaseUrl: "https://api.example.test",
-      apiKey: "hstar_test.secret",
-    });
-
-    expect(registeredToolNames(server)).toEqual([
-      "start_browser_login",
-      "complete_browser_login",
-      "hyperstar_whoami",
-      "list_workspaces",
-      "select_workspace",
-      "get_hyperstar_workflow_guide",
-      "search_creators",
-      "get_search_results",
-      "list_campaigns",
-      "create_campaign",
-      "save_search_results_to_campaign",
-      "list_campaign_creators",
-      "check_bulk_email_readiness",
-      "start_bulk_email",
-      "get_bulk_email_job",
-      "list_inbox_threads",
-      "get_inbox_thread_messages",
-      "get_inbox_aggregates",
-      "update_inbox_thread_state",
-      "send_inbox_reply",
-    ]);
-  });
-
-  it("registers all required MCP tool names", () => {
-    const server = new McpServer({ name: "hyperstar-test", version: "0.1.0" });
-    registerHyperstarTools(server, new RecordingHyperstarClient([]));
-
-    expect(registeredToolNames(server)).toEqual([
-      "hyperstar_whoami",
-      "list_workspaces",
-      "select_workspace",
-      "get_hyperstar_workflow_guide",
-      "search_creators",
-      "get_search_results",
-      "list_campaigns",
-      "create_campaign",
-      "save_search_results_to_campaign",
-      "list_campaign_creators",
-      "check_bulk_email_readiness",
-      "start_bulk_email",
-      "get_bulk_email_job",
-      "list_inbox_threads",
-      "get_inbox_thread_messages",
-      "get_inbox_aggregates",
-      "update_inbox_thread_state",
-      "send_inbox_reply",
-    ]);
-  });
-});
-
-function registeredToolNames(server: McpServer): string[] {
-  const internals = server as unknown as {
-    readonly _registeredTools: Record<string, unknown>;
-  };
-  return Object.keys(internals._registeredTools);
-}

@@ -31,22 +31,33 @@ export type HyperstarClient = {
     body?: JsonObject,
     headers?: Record<string, string>,
   ) => Promise<JsonValue>;
+  readonly put: (path: string, body?: JsonObject) => Promise<JsonValue>;
+  readonly delete: (path: string, body?: JsonObject) => Promise<JsonValue>;
   readonly patch: (path: string, body?: JsonObject) => Promise<JsonValue>;
 };
 
 type Fetcher = (input: URL, init: RequestInit) => Promise<Response>;
 
+export type HostedRequestConfig = {
+  readonly authMode: "hosted";
+  readonly apiBaseUrl: string;
+  readonly bearerToken: string;
+  readonly edgeSecret: string;
+  readonly signal: AbortSignal;
+  readonly onUnauthorized: () => void;
+};
+
 const MCP_AUTH_CONFIGURATION_MESSAGE =
   "Call start_browser_login, then complete_browser_login and select_workspace, or set HYPERSTAR_API_KEY.";
 
 export function createHyperstarClient(options: {
-  readonly config: HyperstarMcpConfig;
+  readonly config: HyperstarMcpConfig | HostedRequestConfig;
   readonly fetcher?: Fetcher | undefined;
 }): HyperstarClient {
   const fetcher = options.fetcher ?? fetch;
 
   async function request(
-    method: "GET" | "POST" | "PATCH",
+    method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
     path: string,
     body?: JsonObject,
     extraHeaders: Record<string, string> = {},
@@ -58,7 +69,13 @@ export function createHyperstarClient(options: {
     }
 
     const baseHeaders: Record<string, string> = {
-      ...extraHeaders,
+      ...(options.config.authMode === "hosted"
+        ? Object.fromEntries(
+            Object.entries(extraHeaders).filter(
+              ([key]) => key.toLowerCase() === "idempotency-key",
+            ),
+          )
+        : extraHeaders),
       accept: "application/json",
     };
     const secretsToRedact: string[] = [];
@@ -69,6 +86,14 @@ export function createHyperstarClient(options: {
     if (options.config.authMode === "service_account") {
       baseHeaders["x-hyperstar-api-key"] = options.config.apiKey;
       secretsToRedact.push(options.config.apiKey);
+    } else if (options.config.authMode === "hosted") {
+      baseHeaders.Authorization = `Bearer ${options.config.bearerToken}`;
+      baseHeaders["x-hyperstar-edge-client"] = options.config.edgeSecret;
+      delete baseHeaders["X-Hyperstar-Organization-Id"];
+      secretsToRedact.push(
+        options.config.bearerToken,
+        options.config.edgeSecret,
+      );
     } else {
       const requestAuth = await readCliRequestAuth(options.config);
       assertCliRequestAuthMatchesConfig(options.config, requestAuth);
@@ -85,12 +110,19 @@ export function createHyperstarClient(options: {
       retryCliAccessToken = requestAuth.refreshAccessToken;
     }
     const init: RequestInit = { method, headers: baseHeaders };
+    if (options.config.authMode === "hosted") {
+      init.redirect = "error";
+      init.signal = options.config.signal;
+    }
     if (body !== undefined) {
       baseHeaders["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
 
     let response = await fetcher(url, init);
+    if (response.status === 401 && options.config.authMode === "hosted") {
+      options.config.onUnauthorized();
+    }
     const payload = await readJson(response);
     if (response.status === 401 && retryCliAccessToken !== undefined) {
       const refreshedAccessToken = await retryCliAccessToken();
@@ -115,7 +147,11 @@ export function createHyperstarClient(options: {
     if (!response.ok) {
       throw new HyperstarApiError(
         response.status,
-        redactSecrets(extractDetail(payload), secretsToRedact),
+        redactSecrets(
+          extractDetail(payload),
+          secretsToRedact,
+          options.config.authMode === "hosted",
+        ),
       );
     }
 
@@ -126,6 +162,8 @@ export function createHyperstarClient(options: {
     get: (path, query) => request("GET", path, undefined, {}, query),
     post: (path, body, headers) => request("POST", path, body, headers),
     patch: (path, body) => request("PATCH", path, body),
+    put: (path, body) => request("PUT", path, body),
+    delete: (path, body) => request("DELETE", path, body),
   };
 }
 
@@ -245,6 +283,9 @@ function extractDetail(payload: JsonValue): JsonValue {
 
 function formatApiErrorMessage(status: number, detail: JsonValue): string {
   if (typeof detail === "string") {
+    if (status === 403 && detail.startsWith("Missing required scope:")) {
+      return `${detail}. Reconnect with fresh consent or update the API key permissions.`;
+    }
     return detail;
   }
   if (!isJsonObject(detail)) {
@@ -285,23 +326,27 @@ function stringProperty(value: JsonObject, key: string): string | undefined {
 function redactSecrets(
   value: JsonValue,
   secrets: readonly string[],
+  complete = false,
 ): JsonValue {
   if (typeof value === "string") {
     return secrets.reduce(
-      (redacted, secret) => redacted.split(secret).join(redactSecret(secret)),
+      (redacted, secret) =>
+        redacted
+          .split(secret)
+          .join(complete ? "[redacted]" : redactSecret(secret)),
       value,
     );
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => redactSecrets(item, secrets));
+    return value.map((item) => redactSecrets(item, secrets, complete));
   }
 
   if (isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
-        redactSecrets(key, secrets),
-        redactSecrets(item, secrets),
+        redactSecrets(key, secrets, complete),
+        redactSecrets(item, secrets, complete),
       ]),
     ) as JsonObject;
   }

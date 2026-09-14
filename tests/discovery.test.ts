@@ -58,6 +58,7 @@ describe("MCP discovery surfaces", () => {
 
       const prompts = await client.listPrompts();
       expect(prompts.prompts.map((prompt) => prompt.name)).toContain(
+        "hyperstar_imports_and_usage",
         "hyperstar_headless_workflow",
       );
 
@@ -123,10 +124,14 @@ describe("MCP discovery surfaces", () => {
     try {
       const listed = await client.listPrompts();
       expect(listed.prompts.map((prompt) => prompt.name)).toEqual([
+        "hyperstar_imports_and_usage",
         "hyperstar_headless_workflow",
         "hyperstar_search_to_campaign",
         "hyperstar_bulk_email_safety",
         "hyperstar_inbox_workflow",
+        "hyperstar_campaign_management",
+        "hyperstar_campaign_reporting",
+        "hyperstar_forms_and_files",
       ]);
 
       const prompt = await client.getPrompt({

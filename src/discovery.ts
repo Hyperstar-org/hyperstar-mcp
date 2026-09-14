@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Surface } from "./surface.js";
 
 import {
   buildWorkflowMarkdown,
@@ -14,6 +15,12 @@ type WorkflowPromptDefinition = {
 };
 
 const workflowPromptDefinitions = [
+  {
+    name: "hyperstar_imports_and_usage",
+    title: "Imports and usage",
+    description: "Agent guide to spreadsheet imports and credit estimates.",
+    kind: "imports-and-usage",
+  },
   {
     name: "hyperstar_headless_workflow",
     title: "Hyperstar Headless Workflow",
@@ -41,10 +48,29 @@ const workflowPromptDefinitions = [
     description: "Read, triage, and reply to inbox threads safely.",
     kind: "inbox",
   },
+  {
+    name: "hyperstar_campaign_management",
+    title: "Campaign Management",
+    description: "Manage a roster and follow-up waves.",
+    kind: "campaign-management",
+  },
+  {
+    name: "hyperstar_campaign_reporting",
+    title: "Campaign Reporting",
+    description: "Inspect period results and revenue.",
+    kind: "reporting",
+  },
+  {
+    name: "hyperstar_forms_and_files",
+    title: "Forms and Files",
+    description: "Select forms and complete authenticated file transfers.",
+    kind: "forms-and-files",
+  },
 ] as const satisfies readonly WorkflowPromptDefinition[];
 
 export type HyperstarDiscoveryOptions = {
   readonly apiBaseUrl: string;
+  readonly surface?: Surface;
 };
 
 /** Register static MCP resources and prompts that explain Hyperstar workflows. */
@@ -67,7 +93,7 @@ export function registerHyperstarDiscovery(
           {
             uri: uri.toString(),
             mimeType: "text/markdown",
-            text: buildWorkflowMarkdown(resource.kind),
+            text: buildWorkflowMarkdown(resource.kind, options.surface),
           },
         ],
       }),
@@ -87,7 +113,7 @@ export function registerHyperstarDiscovery(
             role: "user",
             content: {
               type: "text",
-              text: buildWorkflowMarkdown(prompt.kind),
+              text: buildWorkflowMarkdown(prompt.kind, options.surface),
             },
           },
         ],
