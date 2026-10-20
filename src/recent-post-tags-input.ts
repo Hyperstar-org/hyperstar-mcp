@@ -15,10 +15,10 @@ const RecentTagListSchema = z
       return z.NEVER;
     }
     const deduplicated = [...new Set(normalized)];
-    if (deduplicated.length > 1) {
+    if (deduplicated.length > 5) {
       context.addIssue({
         code: "custom",
-        message: "any_of must contain at most 1 tag",
+        message: "any_of must contain at most 5 tags",
       });
       return z.NEVER;
     }

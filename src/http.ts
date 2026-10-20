@@ -1,4 +1,8 @@
-import { redactSecret, type HyperstarMcpConfig } from "./config.js";
+import {
+  AUTH_CONFIGURATION_MESSAGE,
+  redactSecret,
+  type HyperstarMcpConfig,
+} from "./config.js";
 
 export type JsonValue =
   | null
@@ -45,10 +49,9 @@ export type HostedRequestConfig = {
   readonly edgeSecret: string;
   readonly signal: AbortSignal;
   readonly onUnauthorized: () => void;
+  /** Workspace chosen by the current tool call; only all-workspace grants supply one. */
+  readonly workspaceId?: () => string | undefined;
 };
-
-const MCP_AUTH_CONFIGURATION_MESSAGE =
-  "Call start_browser_login, then complete_browser_login and select_workspace, or set HYPERSTAR_API_KEY.";
 
 export function createHyperstarClient(options: {
   readonly config: HyperstarMcpConfig | HostedRequestConfig;
@@ -79,35 +82,23 @@ export function createHyperstarClient(options: {
       accept: "application/json",
     };
     const secretsToRedact: string[] = [];
-    let retryCliAccessToken: (() => Promise<string>) | undefined;
     if (options.config.authMode === "unauthenticated") {
-      throw new Error(MCP_AUTH_CONFIGURATION_MESSAGE);
+      throw new Error(AUTH_CONFIGURATION_MESSAGE);
     }
     if (options.config.authMode === "service_account") {
       baseHeaders["x-hyperstar-api-key"] = options.config.apiKey;
       secretsToRedact.push(options.config.apiKey);
-    } else if (options.config.authMode === "hosted") {
+    } else {
       baseHeaders.Authorization = `Bearer ${options.config.bearerToken}`;
       baseHeaders["x-hyperstar-edge-client"] = options.config.edgeSecret;
       delete baseHeaders["X-Hyperstar-Organization-Id"];
+      const workspaceId = options.config.workspaceId?.();
+      if (workspaceId !== undefined)
+        baseHeaders["X-Hyperstar-Organization-Id"] = workspaceId;
       secretsToRedact.push(
         options.config.bearerToken,
         options.config.edgeSecret,
       );
-    } else {
-      const requestAuth = await readCliRequestAuth(options.config);
-      assertCliRequestAuthMatchesConfig(options.config, requestAuth);
-      assertSelectedWorkspace(requestAuth.selectedOrganizationId, path);
-      baseHeaders.Authorization = `Bearer ${requestAuth.accessToken}`;
-      secretsToRedact.push(
-        requestAuth.accessToken,
-        `Bearer ${requestAuth.accessToken}`,
-      );
-      if (requestAuth.selectedOrganizationId !== undefined) {
-        baseHeaders["X-Hyperstar-Organization-Id"] =
-          requestAuth.selectedOrganizationId;
-      }
-      retryCliAccessToken = requestAuth.refreshAccessToken;
     }
     const init: RequestInit = { method, headers: baseHeaders };
     if (options.config.authMode === "hosted") {
@@ -119,31 +110,11 @@ export function createHyperstarClient(options: {
       init.body = JSON.stringify(body);
     }
 
-    let response = await fetcher(url, init);
+    const response = await fetcher(url, init);
     if (response.status === 401 && options.config.authMode === "hosted") {
       options.config.onUnauthorized();
     }
     const payload = await readJson(response);
-    if (response.status === 401 && retryCliAccessToken !== undefined) {
-      const refreshedAccessToken = await retryCliAccessToken();
-      const retryHeaders = {
-        ...baseHeaders,
-        Authorization: `Bearer ${refreshedAccessToken}`,
-      };
-      secretsToRedact.push(
-        refreshedAccessToken,
-        `Bearer ${refreshedAccessToken}`,
-      );
-      response = await fetcher(url, { ...init, headers: retryHeaders });
-      const retryPayload = await readJson(response);
-      if (response.ok) {
-        return retryPayload;
-      }
-      throw new HyperstarApiError(
-        response.status,
-        redactSecrets(extractDetail(retryPayload), secretsToRedact),
-      );
-    }
     if (!response.ok) {
       throw new HyperstarApiError(
         response.status,
@@ -167,73 +138,6 @@ export function createHyperstarClient(options: {
   };
 }
 
-/** Read CLI bearer token and workspace as one snapshot when the config supports it. */
-async function readCliRequestAuth(
-  config: Extract<HyperstarMcpConfig, { readonly authMode: "cli" }>,
-): Promise<{
-  readonly apiBaseUrl: string;
-  readonly appBaseUrl: string;
-  readonly accessToken: string;
-  readonly selectedOrganizationId?: string;
-  readonly refreshAccessToken?: () => Promise<string>;
-}> {
-  if (config.requestAuthSnapshotProvider !== undefined) {
-    return await config.requestAuthSnapshotProvider.getRequestAuthSnapshot();
-  }
-  const selectedOrganizationId =
-    await config.workspaceSelection.getSelectedOrganizationId();
-  const accessToken = await config.accessTokenProvider.getAccessToken();
-  return cliRequestAuth(
-    config.apiBaseUrl,
-    config.appBaseUrl,
-    accessToken,
-    selectedOrganizationId,
-    config.accessTokenProvider.refreshAccessToken,
-  );
-}
-
-/** Build CLI request auth without assigning undefined optional fields. */
-function cliRequestAuth(
-  apiBaseUrl: string,
-  appBaseUrl: string,
-  accessToken: string,
-  selectedOrganizationId: string | undefined,
-  refreshAccessToken: (() => Promise<string>) | undefined,
-): {
-  readonly apiBaseUrl: string;
-  readonly appBaseUrl: string;
-  readonly accessToken: string;
-  readonly selectedOrganizationId?: string;
-  readonly refreshAccessToken?: () => Promise<string>;
-} {
-  return {
-    apiBaseUrl,
-    appBaseUrl,
-    accessToken,
-    ...(selectedOrganizationId === undefined ? {} : { selectedOrganizationId }),
-    ...(refreshAccessToken === undefined ? {} : { refreshAccessToken }),
-  };
-}
-
-/** Refuse to mix one persisted CLI identity with another request origin. */
-function assertCliRequestAuthMatchesConfig(
-  config: Extract<HyperstarMcpConfig, { readonly authMode: "cli" }>,
-  requestAuth: {
-    readonly apiBaseUrl: string;
-    readonly appBaseUrl: string;
-  },
-): void {
-  if (
-    requestAuth.apiBaseUrl === config.apiBaseUrl &&
-    requestAuth.appBaseUrl === config.appBaseUrl
-  ) {
-    return;
-  }
-  throw new Error(
-    "Hyperstar auth changed while preparing the request; call the tool again",
-  );
-}
-
 function buildApiUrl(apiBaseUrl: string, path: string): URL {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
     throw new Error("Hyperstar API path must be root-relative");
@@ -246,19 +150,6 @@ function buildApiUrl(apiBaseUrl: string, path: string): URL {
   }
 
   return url;
-}
-
-/** Require an explicit workspace for CLI-authenticated Product API routes. */
-function assertSelectedWorkspace(
-  selectedOrganizationId: string | undefined,
-  path: string,
-): void {
-  if (selectedOrganizationId !== undefined || path === "/v1/workspaces") {
-    return;
-  }
-  throw new Error(
-    "Run `hyperstar workspaces use <workspace_id>` before calling Product API routes",
-  );
 }
 
 async function readJson(response: Response): Promise<JsonValue> {

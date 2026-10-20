@@ -1,9 +1,9 @@
 {
   "name": "@hyperstar/mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
-  "description": "Local stdio MCP server and CLI for Hyperstar headless workflows in Claude Code and Claude Desktop.",
+  "description": "Local stdio MCP server for Hyperstar headless workflows, authenticated with a service-account API key.",
   "keywords": [
     "hyperstar",
     "hyperstarai",
@@ -33,8 +33,7 @@
     "access": "public"
   },
   "bin": {
-    "hyperstar-mcp": "dist/index.js",
-    "hyperstar": "dist/cli.js"
+    "hyperstar-mcp": "dist/index.js"
   },
   "files": [
     "dist",

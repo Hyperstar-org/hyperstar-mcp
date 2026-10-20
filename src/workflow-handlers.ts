@@ -50,7 +50,6 @@ import {
   ListWorkspacesInputSchema,
   SaveSearchResultsToCampaignInputSchema,
   SearchCreatorsInputSchema,
-  SelectWorkspaceInputSchema,
   SendInboxReplyInputSchema,
   StartBulkEmailInputSchema,
   UpdateInboxThreadStateInputSchema,
@@ -61,7 +60,6 @@ import type { ToolRegistrar } from "./tool-registrar.js";
 import {
   getHyperstarWorkflowGuide,
   listAvailableWorkspaces,
-  selectAvailableWorkspace,
   type WorkspaceToolOptions,
 } from "./workspaces.js";
 
@@ -77,15 +75,6 @@ export function createToolHandlers(
     listWorkspaces: async (input = {}) => {
       ListWorkspacesInputSchema.parse(input);
       return listAvailableWorkspaces(client, options);
-    },
-
-    selectWorkspace: async (input) => {
-      const parsedInput = SelectWorkspaceInputSchema.parse(input);
-      return selectAvailableWorkspace(
-        client,
-        parsedInput.organization_id,
-        options,
-      );
     },
 
     getHyperstarWorkflowGuide: async (input = {}) => {

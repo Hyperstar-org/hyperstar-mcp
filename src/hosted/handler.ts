@@ -14,6 +14,11 @@ import {
 } from "./auth.js";
 import { advertisedScopes, type HostedConfig } from "./config.js";
 import { createHostedMcpServer } from "./server.js";
+import {
+  createWorkspaceScope,
+  type ConnectorWorkspaceAccess,
+  type WorkspaceScope,
+} from "./workspace-scope.js";
 
 export type HostedLogEvent = {
   readonly event: "request" | "origin_rejected";
@@ -108,6 +113,7 @@ export function createHostedHandler(
         : respond(503, "temporarily_unavailable");
     }
     let unauthorized = false;
+    let workspaceScope: WorkspaceScope | undefined;
     const client = createHyperstarClient({
       config: {
         authMode: "hosted",
@@ -118,11 +124,12 @@ export function createHostedHandler(
         onUnauthorized: () => {
           unauthorized = true;
         },
+        workspaceId: () => workspaceScope?.current(),
       },
       fetcher: options.fetcher,
     });
     try {
-      await preflight(client, identity);
+      workspaceScope = createWorkspaceScope(await preflight(client, identity));
     } catch (error) {
       if (
         unauthorized ||
@@ -138,6 +145,7 @@ export function createHostedHandler(
       config.apiBaseUrl,
       config.expandedScopesEnabled ?? false,
       config.usageScopeEnabled ?? false,
+      workspaceScope,
     );
     const transport = new WebStandardStreamableHTTPServerTransport({
       enableJsonResponse: true,
@@ -174,11 +182,16 @@ export function createHostedHandler(
 async function preflight(
   client: HyperstarClient,
   identity: HostedIdentity,
-): Promise<void> {
+): Promise<ConnectorWorkspaceAccess> {
   const response = await client.get("/v1/whoami");
-  WhoamiResponseSchema.extend({
+  return WhoamiResponseSchema.extend({
     auth_surface: z.literal("mcp_connector"),
     actor_type: z.literal("user"),
     user_id: z.literal(identity.userId),
-  }).parse(response);
+    // Absent before the API reports it; such grants are single-workspace.
+    connector_workspace_access: z
+      .enum(["single", "all"])
+      .nullish()
+      .transform((access) => access ?? "single"),
+  }).parse(response).connector_workspace_access;
 }

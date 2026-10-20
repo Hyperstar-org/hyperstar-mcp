@@ -148,7 +148,6 @@ function validateWave(
     threading?: "new_or_existing" | "require_existing" | undefined;
     requested_parent_wave_id?: string | undefined;
     from_email?: string | undefined;
-    email_account_id?: string | undefined;
   },
   context: z.RefinementCtx,
 ): void {
@@ -165,16 +164,10 @@ function validateWave(
         "Follow-ups require kind follow_up and threading require_existing; initial sends cannot have a parent wave.",
     });
   }
-  if (value.from_email !== undefined && value.email_account_id !== undefined)
-    context.addIssue({
-      code: "custom",
-      message: "Choose from_email or email_account_id, not both.",
-    });
 }
 
 const CheckBulkEmailReadinessBaseSchema = z.object({
   campaign_id: CampaignIdSchema,
-  email_account_id: z.string().uuid().optional(),
   kind: z.enum(["initial", "follow_up"]).optional(),
   threading: z.enum(["new_or_existing", "require_existing"]).optional(),
   requested_parent_wave_id: z.string().uuid().optional(),
@@ -202,7 +195,6 @@ const StartBulkEmailBaseSchema = z
     subject: EmailSubjectSchema,
     body_text: z.string().trim().min(1),
     from_email: z.string().trim().min(1).optional(),
-    email_account_id: z.string().uuid().optional(),
     kind: z.enum(["initial", "follow_up"]).optional(),
     threading: z.enum(["new_or_existing", "require_existing"]).optional(),
     requested_parent_wave_id: z.string().uuid().optional(),
@@ -251,9 +243,6 @@ export function normalizeCheckBulkEmailReadinessInput(
   if (input.recipient_target.type === "ids") {
     return {
       campaign_id: input.campaign_id,
-      ...(input.email_account_id === undefined
-        ? {}
-        : { email_account_id: input.email_account_id }),
       ...(input.kind === undefined ? {} : { kind: input.kind }),
       ...(input.threading === undefined ? {} : { threading: input.threading }),
       ...(input.requested_parent_wave_id === undefined
@@ -264,9 +253,6 @@ export function normalizeCheckBulkEmailReadinessInput(
   }
   return {
     campaign_id: input.campaign_id,
-    ...(input.email_account_id === undefined
-      ? {}
-      : { email_account_id: input.email_account_id }),
     ...(input.kind === undefined ? {} : { kind: input.kind }),
     ...(input.threading === undefined ? {} : { threading: input.threading }),
     ...(input.requested_parent_wave_id === undefined
@@ -286,7 +272,6 @@ export function normalizeStartBulkEmailInput(
     subject: input.subject,
     body_text: input.body_text,
     from_email: input.from_email,
-    email_account_id: input.email_account_id,
     kind: input.kind,
     threading: input.threading,
     requested_parent_wave_id: input.requested_parent_wave_id,

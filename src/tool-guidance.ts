@@ -95,7 +95,6 @@ export function readinessGuidance(
       ["kind", input.kind],
       ["threading", input.threading],
       ["requested_parent_wave_id", input.requested_parent_wave_id],
-      ["email_account_id", input.email_account_id],
       [
         "recipient_target",
         recipientTargetArgument(campaignCreatorIds, campaignCreatorSelection),

@@ -12,7 +12,9 @@ const MCP_SERVER_USAGE = [
   "",
   "Authentication:",
   "  Tools and guides are discoverable before auth.",
-  "  Product API calls require `hyperstar login` or HYPERSTAR_API_KEY.",
+  "  Product API calls require HYPERSTAR_API_KEY (a service-account key).",
+  "  To act as a signed-in user, connect to the hosted connector instead:",
+  "  https://mcp.hyper-star.org/mcp",
 ].join("\n");
 
 /** Start the stdio MCP server process. */
@@ -21,10 +23,7 @@ async function main(): Promise<void> {
     process.stdout.write(`${MCP_SERVER_USAGE}\n`);
     return;
   }
-  const config = loadServerConfig();
-  const server = createHyperstarMcpServer(config, {
-    loadConfig: () => loadServerConfig(),
-  });
+  const server = createHyperstarMcpServer(loadServerConfig());
   await server.connect(new StdioServerTransport());
 }
 

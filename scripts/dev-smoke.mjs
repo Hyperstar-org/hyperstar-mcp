@@ -9,7 +9,6 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function requireSmokeConfig() {
   const apiBaseUrl = requiredEnv("HYPERSTAR_API_BASE_URL");
-  const appBaseUrl = requiredEnv("HYPERSTAR_APP_BASE_URL");
   const campaignId = positiveIntegerEnv("HYPERSTAR_MCP_SMOKE_CAMPAIGN_ID");
   const campaignName = requiredEnv("HYPERSTAR_MCP_SMOKE_CAMPAIGN_NAME");
   const recipientId = positiveIntegerEnv("HYPERSTAR_MCP_SMOKE_RECIPIENT_ID");
@@ -18,7 +17,7 @@ function requireSmokeConfig() {
       "Set HYPERSTAR_MCP_SMOKE_INTERNAL_FIXTURE=1 only when using an approved internal smoke-test fixture.",
     );
   }
-  return { apiBaseUrl, appBaseUrl, campaignId, campaignName, recipientId };
+  return { apiBaseUrl, campaignId, campaignName, recipientId };
 }
 
 function requiredEnv(name) {
@@ -82,7 +81,6 @@ async function main() {
     env: {
       ...process.env,
       HYPERSTAR_API_BASE_URL: smokeConfig.apiBaseUrl,
-      HYPERSTAR_APP_BASE_URL: smokeConfig.appBaseUrl,
     },
   });
 

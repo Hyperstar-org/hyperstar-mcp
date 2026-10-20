@@ -27,16 +27,6 @@ import {
 export const HYPERSTAR_TOOL_METADATA = {
   ...EXPANDED_TOOL_METADATA,
   ...IMPORT_USAGE_METADATA,
-  start_browser_login: {
-    title: "Start Browser Login",
-    description: TOOL_DESCRIPTIONS.startBrowserLogin,
-    annotations: annotations("Start Browser Login", WRITE),
-  },
-  complete_browser_login: {
-    title: "Complete Browser Login",
-    description: TOOL_DESCRIPTIONS.completeBrowserLogin,
-    annotations: annotations("Complete Browser Login", WRITE),
-  },
   hyperstar_whoami: {
     title: "Hyperstar Whoami",
     description: TOOL_DESCRIPTIONS.hyperstarWhoami,
@@ -46,11 +36,6 @@ export const HYPERSTAR_TOOL_METADATA = {
     title: "List Workspaces",
     description: TOOL_DESCRIPTIONS.listWorkspaces,
     annotations: annotations("List Workspaces", READ_ONLY),
-  },
-  select_workspace: {
-    title: "Select Workspace",
-    description: TOOL_DESCRIPTIONS.selectWorkspace,
-    annotations: annotations("Select Workspace", WRITE),
   },
   get_hyperstar_workflow_guide: {
     title: "Get Hyperstar Workflow Guide",
@@ -143,11 +128,8 @@ export type HyperstarToolName = keyof typeof HYPERSTAR_TOOL_METADATA;
 
 /** Ordered tool names for generated MCPB manifests and docs. */
 export const HYPERSTAR_TOOL_ORDER = [
-  "start_browser_login",
-  "complete_browser_login",
   "hyperstar_whoami",
   "list_workspaces",
-  "select_workspace",
   "get_hyperstar_workflow_guide",
   "search_creators",
   "get_search_results",

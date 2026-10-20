@@ -21,13 +21,14 @@ export const HOSTED_TOOL_POLICY = {
   remove_campaign_file: true,
 
   get_creator: true,
+  get_creator_catalog_status: true,
+  request_creator_catalog_enrichment: true,
   list_forms: true,
   get_form: true,
   create_form: true,
   update_form: true,
   delete_form: true,
 
-  list_email_senders: true,
   list_campaign_email_waves: true,
   get_campaign_email_wave: true,
   cancel_campaign_email_wave: true,
@@ -49,11 +50,8 @@ export const HOSTED_TOOL_POLICY = {
   add_campaign_creator: true,
   update_campaign_creator: true,
 
-  start_browser_login: false,
-  complete_browser_login: false,
   hyperstar_whoami: true,
-  list_workspaces: false,
-  select_workspace: false,
+  list_workspaces: true,
   get_hyperstar_workflow_guide: true,
   search_creators: true,
   get_search_results: true,

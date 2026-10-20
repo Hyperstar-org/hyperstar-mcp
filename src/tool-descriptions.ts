@@ -1,18 +1,12 @@
 export const TOOL_DESCRIPTIONS = {
-  startBrowserLogin:
-    "Start local browser login for user-scoped Hyperstar auth when no service-account API key is configured. Open the returned authorize_url, then call complete_browser_login.",
-  completeBrowserLogin:
-    "Poll a browser-login attempt by login_id and continue to list_workspaces after authentication succeeds.",
   hyperstarWhoami:
     "Inspect the authenticated Hyperstar principal, workspace, scopes, and capabilities before running workflow tools.",
   listWorkspaces:
-    "List Hyperstar workspaces available to the current auth session. In local browser CLI auth, call select_workspace next when a workspace is not selected.",
-  selectWorkspace:
-    "Persist the Hyperstar workspace selected for CLI-authenticated tools. Call hyperstar_whoami next to confirm scope.",
+    "List Hyperstar workspaces available to the current credential. Hosted all-workspace grants pass one organization_id as workspace_id on later calls; an API key is already bound to one workspace.",
   workflowGuide:
     "Return the recommended Hyperstar workflow sequence, discovery resources, and send-safety notes.",
   searchCreators:
-    "Create a creator search and return compact creator summaries. Use kind=keyword for YouTube, whose supported arguments are region and query and whose supported structured filters are follower_range, creator_language, and has_email; YouTube reference search and metric sorting are unavailable. TikTok/Instagram use semantic or reference search and their existing richer filters. Use search_id with save_search_results_to_campaign.",
+    "Create a creator search and return compact creator summaries. Use kind=keyword for YouTube, whose supported arguments are region and query and whose supported structured filters are follower_range, creator_language, and has_email; YouTube reference search and metric sorting are unavailable. TikTok/Instagram use semantic or reference search and their existing richer filters. A reference (lookalike) search needs its reference creator indexed first: check get_creator_catalog_status, and use request_creator_catalog_enrichment when it reports not_in_catalog; a 409 REFERENCE_CREATOR_NOT_INDEXED error means the same. Use search_id with save_search_results_to_campaign.",
   getSearchResults:
     "Page through an existing creator search. Defaults to compact creator summaries; use detail_level full only for raw detail-on-demand pages.",
   listCampaigns:

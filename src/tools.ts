@@ -18,7 +18,6 @@ import {
   ListWorkspacesInputSchema,
   SaveSearchResultsToCampaignInputSchema,
   SearchCreatorsInputSchema,
-  SelectWorkspaceInputSchema,
   StartBulkEmailDiscoveryInputSchema,
   StartEmailUnlockInputSchema,
   WorkflowGuideInputSchema,
@@ -49,24 +48,14 @@ export function registerHyperstarTools(
     },
     async () => toolResult(await handlers.hyperstarWhoami()),
   );
-  if (options.surface !== "hosted") {
-    server.registerTool(
-      "list_workspaces",
-      {
-        ...toolMetadata("list_workspaces"),
-        inputSchema: ListWorkspacesInputSchema,
-      },
-      async (input) => toolResult(await handlers.listWorkspaces(input)),
-    );
-    server.registerTool(
-      "select_workspace",
-      {
-        ...toolMetadata("select_workspace"),
-        inputSchema: SelectWorkspaceInputSchema,
-      },
-      async (input) => toolResult(await handlers.selectWorkspace(input)),
-    );
-  }
+  server.registerTool(
+    "list_workspaces",
+    {
+      ...toolMetadata("list_workspaces"),
+      inputSchema: ListWorkspacesInputSchema,
+    },
+    async (input) => toolResult(await handlers.listWorkspaces(input)),
+  );
   server.registerTool(
     "get_hyperstar_workflow_guide",
     {

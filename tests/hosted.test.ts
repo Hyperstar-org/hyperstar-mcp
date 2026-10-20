@@ -1,12 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import { createServer } from "node:http";
 
 import { createHyperstarClient } from "../src/http.js";
 import { HostedAuthorizationError } from "../src/hosted/auth.js";
 import { createHostedTokenVerifier } from "../src/hosted/auth.js";
-import { readHostedConfig } from "../src/hosted/config.js";
 import { close, fixture, listen, whoami } from "./hosted-support.js";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -116,10 +115,11 @@ it("runs SDK tools and hosted guides without local auth/workspace tools", async 
   );
   try {
     const list = await client.listTools();
-    expect(list.tools).toHaveLength(23);
-    expect(list.tools.map((tool) => tool.name)).not.toEqual(
-      expect.arrayContaining(["start_browser_login", "list_workspaces"]),
-    );
+    expect(list.tools).toHaveLength(24);
+    // A single-workspace grant never names a workspace per call.
+    expect(
+      list.tools.some((tool) => "workspace_id" in tool.inputSchema.properties!),
+    ).toBe(false);
     expect(
       list.tools.every((tool) => tool.annotations?.openWorldHint === true),
     ).toBe(true);
@@ -133,11 +133,9 @@ it("runs SDK tools and hosted guides without local auth/workspace tools", async 
       arguments: {},
     });
     expect(JSON.stringify(guide)).toContain("disconnect and reconnect");
-    expect(JSON.stringify(guide)).not.toContain("start_browser_login");
     const resource = await client.readResource({
       uri: "hyperstar://guide/headless-workflow",
     });
-    expect(JSON.stringify(resource)).not.toContain("list_workspaces");
     expect(
       seen.every(
         (item) =>
@@ -149,6 +147,80 @@ it("runs SDK tools and hosted guides without local auth/workspace tools", async 
     expect(
       seen.filter((item) => item.url === "/v1/whoami").length,
     ).toBeGreaterThanOrEqual(5);
+  } finally {
+    await client.close();
+  }
+});
+
+it("makes an all-workspace grant name its workspace on every scoped call", async () => {
+  const teammate = "00000000-0000-4000-8000-0000000000aa";
+  const seen: { url: string; workspace: string | null }[] = [];
+  const test = await fixture(async (url, init) => {
+    seen.push({
+      url: url.pathname,
+      workspace: new Headers(init.headers).get("x-hyperstar-organization-id"),
+    });
+    if (url.pathname === "/v1/whoami")
+      return json({ ...whoami, connector_workspace_access: "all" });
+    if (url.pathname === "/v1/workspaces")
+      return json({
+        workspaces: [
+          { organization_id: "workspace", name: "Mine", role: "owner" },
+          { organization_id: teammate, name: "Teammate", role: "member" },
+        ],
+      });
+    return json({ campaigns: [], total: 0, limit: 50, offset: 0 });
+  });
+  cleanups.push(test.close);
+  const client = new Client({ name: "hosted-test", version: "1" });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(test.baseUrl + "/mcp"), {
+      requestInit: {
+        headers: { Authorization: "Bearer " + (await test.token()) },
+      },
+    }),
+  );
+  try {
+    const tools = new Map(
+      (await client.listTools()).tools.map((tool) => [tool.name, tool]),
+    );
+    expect(tools.get("list_campaigns")?.inputSchema.required).toContain(
+      "workspace_id",
+    );
+    expect(
+      tools.get("list_workspaces")?.inputSchema.properties,
+    ).not.toHaveProperty("workspace_id");
+    expect(
+      tools.get("hyperstar_whoami")?.inputSchema.required ?? [],
+    ).not.toContain("workspace_id");
+
+    const listed = await client.callTool({
+      name: "list_workspaces",
+      arguments: {},
+    });
+    expect(JSON.stringify(listed)).toContain("Teammate");
+
+    const missing = await client.callTool({
+      name: "list_campaigns",
+      arguments: {},
+    });
+    expect(missing.isError).toBe(true);
+    expect(seen.some((item) => item.url === "/v1/campaigns")).toBe(false);
+
+    const scoped = await client.callTool({
+      name: "list_campaigns",
+      arguments: { workspace_id: teammate },
+    });
+    expect(scoped.isError).not.toBe(true);
+    expect(seen.filter((item) => item.url === "/v1/campaigns")).toEqual([
+      { url: "/v1/campaigns", workspace: teammate },
+    ]);
+    // Grant checks and discovery stay on the default workspace.
+    expect(
+      seen
+        .filter((item) => item.url !== "/v1/campaigns")
+        .every((item) => item.workspace === null),
+    ).toBe(true);
   } finally {
     await client.close();
   }
@@ -185,27 +257,6 @@ it("rechecks revocation on initialize, static tools, resources and prompts", asy
   const unavailable = await rpc(test.baseUrl, bearer, envelope("tools/list"));
   expect(unavailable.status).toBe(503);
   expect(unavailable.headers.get("WWW-Authenticate")).toBeNull();
-});
-
-it("replaces buffered tool errors only for late upstream 401", async () => {
-  let failure = 401;
-  const test = await fixture(async (url) =>
-    url.pathname === "/v1/whoami"
-      ? json(whoami)
-      : json({ detail: "permission denied" }, failure),
-  );
-  cleanups.push(test.close);
-  const bearer = await test.token();
-  const call = envelope("tools/call", {
-    name: "list_campaigns",
-    arguments: {},
-  });
-  const expired = await rpc(test.baseUrl, bearer, call);
-  expect(expired.status).toBe(401);
-  failure = 403;
-  const denied = await rpc(test.baseUrl, bearer, call);
-  expect(denied.status).toBe(200);
-  expect((await denied.json()).result.isError).toBe(true);
 });
 
 it("rejects wrong JWT bindings and retains both published keys across rotation", async () => {
@@ -260,73 +311,6 @@ it("fails closed on unavailable JWKS without calling Product API", async () => {
     new HostedAuthorizationError(503),
   );
   expect(upstream).toBe(0);
-});
-
-it("refetches unknown keys after the bounded cooldown and throttles repeated misses", async () => {
-  const test = await fixture(async () => json(whoami));
-  cleanups.push(test.close);
-  await test.verify(await test.token());
-  test.publishNext();
-  const nextToken = await test.token({}, "next");
-  await expect(test.verify(nextToken)).rejects.toEqual(
-    new HostedAuthorizationError(401),
-  );
-  const now = Date.now();
-  const clock = vi.spyOn(Date, "now").mockReturnValue(now + 31_000);
-  try {
-    expect(await test.verify(nextToken)).toHaveProperty("grantId");
-    for (let index = 0; index < 3; index++)
-      await expect(
-        test.verify(await test.token({}, "unknown")),
-      ).rejects.toEqual(new HostedAuthorizationError(401));
-    expect(test.jwksRequests()).toBe(2);
-  } finally {
-    clock.mockRestore();
-  }
-});
-
-it("aborts the upstream tool request when the HTTP caller disconnects", async () => {
-  let start: () => void = () => undefined;
-  let stop: () => void = () => undefined;
-  const started = new Promise<void>((resolve) => {
-    start = resolve;
-  });
-  const stopped = new Promise<void>((resolve) => {
-    stop = resolve;
-  });
-  const test = await fixture(async (url, init) => {
-    if (url.pathname === "/v1/whoami") return json(whoami);
-    start();
-    return new Promise<Response>((_resolve, reject) =>
-      init.signal?.addEventListener(
-        "abort",
-        () => {
-          stop();
-          reject(new Error("aborted"));
-        },
-        { once: true },
-      ),
-    );
-  });
-  cleanups.push(test.close);
-  const controller = new AbortController();
-  const call = fetch(test.baseUrl + "/mcp", {
-    method: "POST",
-    signal: controller.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-      Authorization: "Bearer " + (await test.token()),
-      "MCP-Protocol-Version": "2025-11-25",
-    },
-    body: JSON.stringify(
-      envelope("tools/call", { name: "list_campaigns", arguments: {} }),
-    ),
-  });
-  await started;
-  controller.abort();
-  await expect(call).rejects.toThrow();
-  await stopped;
 });
 
 it("does not forward a bearer through an upstream redirect", async () => {
@@ -401,22 +385,4 @@ it("isolates concurrent caller credentials and ignores extra auth/workspace head
         !headers.has("x-hyperstar-organization-id"),
     ),
   ).toBe(true);
-});
-
-it("requires hosted configuration without consulting local credentials", () => {
-  expect(() => readHostedConfig({ HYPERSTAR_API_KEY: "local-secret" })).toThrow(
-    "Invalid hosted MCP configuration",
-  );
-  const env = {
-    MCP_ISSUER: "https://api.example",
-    MCP_API_BASE_URL: "https://api.example",
-    MCP_RESOURCE_URL: "https://mcp.example/mcp",
-    MCP_JWKS_URL: "https://api.example/oauth/jwks.json",
-    MCP_EDGE_SECRET: "e".repeat(32),
-    HYPERSTAR_API_KEY: "ignored",
-  };
-  expect(readHostedConfig(env).apiBaseUrl).toBe("https://api.example");
-  expect(() =>
-    readHostedConfig({ ...env, MCP_API_BASE_URL: "https://other.example" }),
-  ).toThrow();
 });

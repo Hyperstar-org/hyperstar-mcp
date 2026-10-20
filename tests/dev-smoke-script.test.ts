@@ -8,7 +8,6 @@ describe("dev smoke script", () => {
   it("requires a caller-provided internal fixture opt-in", async () => {
     const result = await runNodeScript(scriptPath, {
       HYPERSTAR_API_BASE_URL: "https://api.example.test",
-      HYPERSTAR_APP_BASE_URL: "https://app.example.test",
       HYPERSTAR_MCP_SMOKE_CAMPAIGN_ID: "1",
       HYPERSTAR_MCP_SMOKE_CAMPAIGN_NAME: "Internal fixture",
       HYPERSTAR_MCP_SMOKE_RECIPIENT_ID: "2",

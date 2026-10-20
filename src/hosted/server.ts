@@ -7,18 +7,23 @@ import { registerWorkflowSurface } from "../server.js";
 import { isHostedTool } from "../surface.js";
 import type { ToolRegistrar } from "../tool-registrar.js";
 import { toolScopes } from "../tool-scopes.js";
+import {
+  createWorkspaceScope,
+  type WorkspaceScope,
+} from "./workspace-scope.js";
 
 export function createHostedMcpServer(
   client: HyperstarClient,
   apiBaseUrl: string,
   expandedToolsEnabled = false,
   usageToolsEnabled = false,
+  workspaceScope: WorkspaceScope = createWorkspaceScope("single"),
 ): McpServer {
   const server = new McpServer({
     name: "hyperstar",
     version: packageVersion(),
   });
-  const registerTool: McpServer["registerTool"] = (name, config, handler) => {
+  const registerTool = workspaceScope.wrap((name, config, handler) => {
     if (!isHostedTool(name))
       throw new Error("Tool is not included in the hosted surface");
     return server.registerTool(
@@ -32,13 +37,13 @@ export function createHostedMcpServer(
       },
       handler,
     );
-  };
+  });
   const registrar: ToolRegistrar = { registerTool };
   registerWorkflowSurface(
     registrar,
     client,
     "hosted",
-    {},
+    { connectorWorkspaceAccess: workspaceScope.access },
     expandedToolsEnabled,
     usageToolsEnabled,
   );

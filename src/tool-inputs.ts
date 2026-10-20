@@ -41,7 +41,6 @@ const SearchIdSchema = z
   .describe(
     "Search UUID returned by search_creators; pass it instead of pasting creator rows.",
   );
-const WorkspaceOrganizationIdSchema = z.string().trim().min(1);
 const SearchRegionSchema = z
   .string()
   .trim()
@@ -226,12 +225,6 @@ export const WhoamiInputSchema = z.object({}).strict();
 
 export const ListWorkspacesInputSchema = z.object({}).strict();
 
-export const SelectWorkspaceInputSchema = z
-  .object({
-    organization_id: WorkspaceOrganizationIdSchema,
-  })
-  .strict();
-
 export const WorkflowGuideInputSchema = z.object({}).strict();
 
 export const GetSearchResultsInputSchema = z
@@ -370,7 +363,6 @@ export const SendInboxReplyInputSchema = z
 
 type SearchCreatorsInput = z.infer<typeof SearchCreatorsInputSchema>;
 type ListWorkspacesInput = z.infer<typeof ListWorkspacesInputSchema>;
-type SelectWorkspaceInput = z.infer<typeof SelectWorkspaceInputSchema>;
 type WorkflowGuideInput = z.infer<typeof WorkflowGuideInputSchema>;
 type GetSearchResultsInput = z.infer<typeof GetSearchResultsInputSchema>;
 type SaveSearchResultsToCampaignInput = z.infer<
@@ -395,9 +387,6 @@ type SendInboxReplyInput = z.infer<typeof SendInboxReplyInputSchema>;
 export type HyperstarToolHandlers = {
   readonly hyperstarWhoami: () => Promise<JsonObject>;
   readonly listWorkspaces: (input?: ListWorkspacesInput) => Promise<JsonObject>;
-  readonly selectWorkspace: (
-    input: SelectWorkspaceInput,
-  ) => Promise<JsonObject>;
   readonly getHyperstarWorkflowGuide: (
     input?: WorkflowGuideInput,
   ) => Promise<JsonObject>;

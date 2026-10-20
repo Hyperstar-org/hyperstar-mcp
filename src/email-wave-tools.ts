@@ -56,38 +56,6 @@ export function registerEmailWaveTools(
   client: HyperstarClient,
 ): void {
   server.registerTool(
-    "list_email_senders",
-    {
-      ...toolMetadata("list_email_senders"),
-      inputSchema: z
-        .object({
-          limit: z.number().int().min(1).max(100).default(25),
-          offset: z.number().int().min(0).default(0),
-        })
-        .strict(),
-    },
-    async (input) =>
-      toolResult({
-        ...z
-          .object({
-            senders: z.array(
-              z.object({
-                email_account_id: z.string().uuid(),
-                provider: z.string(),
-                email: z.string(),
-                display_name: z.string(),
-              }),
-            ),
-            default_channel: z.string(),
-            total: z.number().int(),
-            next_offset: z.number().int().nullable(),
-          })
-          .parse(await client.get("/v1/email-senders", queryFrom(input))),
-        agent_guidance:
-          "Omit email_account_id to retain the default SES sender. Connected senders are eligible at discovery time and rechecked on send. Follow-up readiness identifies any required prior sender.",
-      }),
-  );
-  server.registerTool(
     "list_campaign_email_waves",
     {
       ...toolMetadata("list_campaign_email_waves"),

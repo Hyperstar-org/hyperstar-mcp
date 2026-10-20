@@ -19,25 +19,6 @@ export type WorkflowGuideResourceDefinition = {
   readonly description: string;
 };
 
-export const CLI_WORKFLOW_SEQUENCE = [
-  "list_workspaces",
-  "select_workspace",
-  "hyperstar_whoami",
-  "search_creators",
-  "list_campaigns or create_campaign",
-  "save_search_results_to_campaign",
-  "list_campaign_creators",
-  "start_email_unlock and poll get_email_unlock_job when selected recipients are locked",
-  "check_bulk_email_readiness",
-  "WARNING: start_bulk_email and send_inbox_reply perform real sends.",
-] as const;
-
-export const BROWSER_LOGIN_WORKFLOW_SEQUENCE = [
-  "start_browser_login",
-  "complete_browser_login",
-  ...CLI_WORKFLOW_SEQUENCE,
-] as const;
-
 export const SERVICE_ACCOUNT_WORKFLOW_SEQUENCE = [
   "list_workspaces",
   "hyperstar_whoami",
@@ -50,18 +31,8 @@ export const SERVICE_ACCOUNT_WORKFLOW_SEQUENCE = [
   "WARNING: start_bulk_email and send_inbox_reply perform real sends.",
 ] as const;
 
-export const CLI_SAFETY_NOTES = [
-  "When no service-account API key is configured inside MCP, call start_browser_login and complete_browser_login instead of asking the user to run a separate CLI command.",
-  "Run list_workspaces and select_workspace before Product API calls that require workspace scope.",
-  "Run hyperstar_whoami after selecting a workspace to confirm the authenticated principal.",
-  "Run list_campaigns or create_campaign before save_search_results_to_campaign when the user has not supplied a campaign_id.",
-  "check_bulk_email_readiness is the final dry-run gate before any bulk send.",
-  "start_email_unlock may charge credits and requires explicit cost confirmation plus a maximum charge bound.",
-  "start_bulk_email and send_inbox_reply perform real sends.",
-] as const;
-
 export const SERVICE_ACCOUNT_SAFETY_NOTES = [
-  "Service-account auth is already workspace-scoped; select_workspace is only for local browser CLI auth.",
+  "The API key is bound to one workspace; the local server has no workspace switching. Use a different key, or the hosted connector, for another workspace.",
   "Run list_workspaces and hyperstar_whoami before workflow tools to confirm the authenticated workspace.",
   "Run list_campaigns or create_campaign before save_search_results_to_campaign when the user has not supplied a campaign_id.",
   "check_bulk_email_readiness is the final dry-run gate before any bulk send.",
@@ -72,6 +43,7 @@ export const SERVICE_ACCOUNT_SAFETY_NOTES = [
 export const WORKFLOW_DATA_FLOW_NOTES = [
   "search_creators returns a search_id plus compact creator summaries; save_search_results_to_campaign consumes search_id server-side, so agents do not need to load every creator row into context.",
   "For YouTube, use kind=keyword and stable channel origin IDs; reference search, metric sorting, and campaign video tracking are unavailable.",
+  "Indexing a creator is separate from searching. A reference (lookalike) search only runs against an indexed creator: call get_creator_catalog_status first, call request_creator_catalog_enrichment when it reports not_in_catalog, poll status until ready_in_catalog (usually a few minutes), then call search_creators. A 409 REFERENCE_CREATOR_NOT_INDEXED error from search_creators means the same flow is required.",
   "check_bulk_email_readiness and start_bulk_email require recipient_target, either exact campaign_creator_ids or a narrowed campaign_creator_selection.",
   "Use list_campaign_creators after saving search results to find campaign_creator_ids for explicit recipient_target calls.",
   "Use start_email_unlock for selected locked campaign creators, poll get_email_unlock_job, then re-run check_bulk_email_readiness.",
@@ -81,8 +53,9 @@ export const WORKFLOW_DATA_FLOW_NOTES = [
 export const HOSTED_WORKFLOW_SEQUENCE =
   SERVICE_ACCOUNT_WORKFLOW_SEQUENCE.slice(1);
 export const HOSTED_SAFETY_NOTES = [
-  "Your connector is bound to the workspace selected during consent. Call hyperstar_whoami to confirm it.",
-  "To change workspace or restore revoked access, disconnect and reconnect through your app's connector settings.",
+  "Call hyperstar_whoami first. Its connector_workspace_access says whether this connector acts in one workspace (single) or any of the user's workspaces (all).",
+  "With all, call list_workspaces, confirm which workspace the user means, and pass that organization_id as workspace_id on every workspace tool call; never switch workspaces without the user's instruction.",
+  "With single, the connector acts only in the workspace selected during consent. To change workspace or restore revoked access, disconnect and reconnect through your app's connector settings.",
   ...SERVICE_ACCOUNT_SAFETY_NOTES.slice(2),
 ] as const;
 
@@ -162,18 +135,8 @@ export const workflowGuideResourceDefinitions = [
 
 /** Return workflow guide data for the authenticated MCP mode. */
 export function workflowGuideJson(
-  authMode: "cli" | "service_account" | "hosted",
+  authMode: "service_account" | "hosted",
 ): JsonObject {
-  if (authMode === "cli") {
-    return {
-      sequence: [...CLI_WORKFLOW_SEQUENCE],
-      safety_notes: [...CLI_SAFETY_NOTES],
-      data_flow_notes: [...WORKFLOW_DATA_FLOW_NOTES],
-      resources: workflowGuideResourceDefinitions.map(
-        (resource) => resource.uri,
-      ),
-    };
-  }
   return {
     sequence: [
       ...(authMode === "hosted"
@@ -217,7 +180,7 @@ export function buildWorkflowMarkdown(
         "1. Confirm workspace/capabilities with hyperstar_whoami; get_campaign and list_campaign_creators provide settings and filtered, paginated rows.",
         "2. Use add_campaign_creator with a stable idempotency_key, or update_campaign_creator for explicit assignments. Roster IDs differ from catalog creator IDs.",
         "3. For all matching rows, prepare_campaign_creator_selection freezes at most 100 IDs for 30 minutes. Copy with a stable key; removal requires explicit approval and the successful source IDs from the copy result.",
-        "4. Discover list_email_senders and list_campaign_email_waves before a follow-up. Readiness and start must use the same kind=follow_up, threading_policy=require_existing, parent wave and sender. Follow-ups are dev-only until provider threading verification passes.",
+        "4. Discover list_campaign_email_waves before a follow-up. Readiness and start must use the same kind=follow_up, threading_policy=require_existing, parent wave. Sends use SES. Follow-ups are dev-only until provider threading verification passes.",
         "5. Cancel a confirmed wave to stop eligible pending work; delivered mail cannot be recalled. Retry only after fresh user authorization and with a stable key. Never infer that uncertain delivery failed.",
       ].join("\n");
     case "reporting":
@@ -255,11 +218,9 @@ export function buildWorkflowMarkdown(
         "",
         "Use these tools in order when the user wants creator discovery, campaign saving, outreach, and inbox follow-up without opening the dashboard.",
         "",
-        "## Service-account flow",
         orderedList(SERVICE_ACCOUNT_WORKFLOW_SEQUENCE),
         "",
-        "## Local browser flow",
-        orderedList(BROWSER_LOGIN_WORKFLOW_SEQUENCE),
+        "The local server authenticates with one service-account API key, which fixes the workspace. To act as a signed-in user, use the hosted connector instead.",
         "",
         "Always confirm workspace and scopes with `hyperstar_whoami` before mutating campaigns, sending bulk email, or replying in the inbox.",
         "",
@@ -274,6 +235,8 @@ export function buildWorkflowMarkdown(
         "# Search To Campaign",
         "",
         '1. Call `search_creators` with the platform, region, query, filters, and limit. For YouTube use `kind: "keyword"`.',
+        "",
+        'For a reference (lookalike) search, first call `get_creator_catalog_status` for the reference creator. If it reports `not_in_catalog`, call `request_creator_catalog_enrichment` and poll `get_creator_catalog_status` until `ready_in_catalog` (indexing usually takes a few minutes), then call `search_creators` with `kind: "reference"`.',
         "",
         'Use structured filter keys such as `follower_range: {"min": 1000, "max": 100000}`, `avg_engagement_rate`, `avg_views`, `has_email`, `email_contactability`, `is_verified`, `creator_language`, `category_1`, Instagram `category_name`, `gmv`, `gpm`, and TikTok/Instagram `recent_post_tags`. Put broad niches and countries in `query`/`region`; do not invent `country`, `categories`, `follower_count`, or `engagement_rate` filter keys. `tag_match_ratio` requires `recent_post_tags`; `gmv` and `gpm` are TikTok-only.',
         "",

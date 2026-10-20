@@ -50,7 +50,6 @@ function smokeEnv() {
   };
   delete env.HYPERSTAR_API_KEY;
   delete env.HYPERSTAR_API_BASE_URL;
-  delete env.HYPERSTAR_APP_BASE_URL;
   return env;
 }
 
@@ -214,15 +213,6 @@ try {
       "--silent",
     ]);
   }
-  runStep("hyperstar-cli-help", "npm", [
-    "exec",
-    "--yes",
-    "--package",
-    packageSpec,
-    "--",
-    "hyperstar",
-    "--help",
-  ]);
   runStep("hyperstar-mcp-help", "npm", [
     "exec",
     "--yes",

@@ -9,7 +9,7 @@ type DesktopExtensionUserConfigEntry = {
   readonly type: "string";
   readonly title: string;
   readonly description: string;
-  readonly required: false;
+  readonly required: boolean;
   readonly default: string;
   readonly sensitive?: true;
 };
@@ -37,7 +37,6 @@ type DesktopExtensionManifest = {
       readonly env: {
         readonly HYPERSTAR_API_KEY: "${user_config.HYPERSTAR_API_KEY}";
         readonly HYPERSTAR_API_BASE_URL: "${user_config.HYPERSTAR_API_BASE_URL}";
-        readonly HYPERSTAR_APP_BASE_URL: "${user_config.HYPERSTAR_APP_BASE_URL}";
       };
     };
   };
@@ -48,7 +47,6 @@ type DesktopExtensionManifest = {
       readonly sensitive: true;
     };
     readonly HYPERSTAR_API_BASE_URL: DesktopExtensionUserConfigEntry;
-    readonly HYPERSTAR_APP_BASE_URL: DesktopExtensionUserConfigEntry;
   };
 };
 
@@ -92,7 +90,6 @@ export function buildDesktopExtensionManifest(
         env: {
           HYPERSTAR_API_KEY: "${user_config.HYPERSTAR_API_KEY}",
           HYPERSTAR_API_BASE_URL: "${user_config.HYPERSTAR_API_BASE_URL}",
-          HYPERSTAR_APP_BASE_URL: "${user_config.HYPERSTAR_APP_BASE_URL}",
         },
       },
     },
@@ -102,8 +99,9 @@ export function buildDesktopExtensionManifest(
       HYPERSTAR_API_KEY: {
         type: "string",
         title: "Hyperstar API Key",
-        description: "Optional Hyperstar service-account API key.",
-        required: false,
+        description:
+          "Hyperstar service-account API key from Team -> API keys. It fixes the workspace. To act as yourself, use the hosted connector instead.",
+        required: true,
         default: "",
         sensitive: true,
       },
@@ -113,13 +111,6 @@ export function buildDesktopExtensionManifest(
         description: "Optional Product API base URL override.",
         required: false,
         default: "https://autopilot.hyper-star.org",
-      },
-      HYPERSTAR_APP_BASE_URL: {
-        type: "string",
-        title: "Hyperstar App Base URL",
-        description: "Optional Hyperstar app base URL override.",
-        required: false,
-        default: "",
       },
     },
   };

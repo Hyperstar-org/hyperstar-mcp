@@ -13,7 +13,6 @@ export function readinessRequestBody(
   return {
     ...campaignRecipientTargetBody(input),
     ...compactJsonObject([
-      ["email_account_id", input.email_account_id],
       ["kind", input.kind],
       ["threading", input.threading],
       ["requested_parent_wave_id", input.requested_parent_wave_id],
@@ -29,7 +28,6 @@ export function startBulkEmailRequestBody(
     ["subject", input.subject],
     ["body_text", input.body_text],
     ["from_email", input.from_email],
-    ["email_account_id", input.email_account_id],
     ["kind", input.kind],
     ["threading", input.threading],
     ["requested_parent_wave_id", input.requested_parent_wave_id],

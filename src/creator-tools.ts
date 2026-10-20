@@ -32,10 +32,109 @@ const Creator = z.object({
   ),
 });
 
+const CatalogPlatform = z
+  .enum(["tiktok", "instagram"])
+  .describe("Creator indexing supports TikTok and Instagram.");
+const CatalogUsername = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .describe("Platform handle, with or without a leading @.");
+const CatalogStatusResponse = z.object({
+  platform: CatalogPlatform,
+  username: z.string(),
+  status: z.enum([
+    "ready_in_catalog",
+    "processing",
+    "not_in_catalog",
+    "not_found_on_platform",
+  ]),
+});
+const CatalogEnrichmentResponse = z.object({
+  platform: CatalogPlatform,
+  username: z.string(),
+  status: z.enum(["added", "already_processing", "already_in_catalog"]),
+});
+
+const CATALOG_STATUS_GUIDANCE: Record<
+  z.infer<typeof CatalogStatusResponse>["status"],
+  string
+> = {
+  ready_in_catalog:
+    "The creator is indexed. A reference search with this creator can be created now.",
+  processing:
+    "The creator is being indexed. Poll get_creator_catalog_status every 15-30 seconds; indexing usually takes a few minutes. Do not create the reference search until the status is ready_in_catalog.",
+  not_in_catalog:
+    "The creator is not indexed. Call request_creator_catalog_enrichment, then poll get_creator_catalog_status until ready_in_catalog before creating the reference search.",
+  not_found_on_platform:
+    "The platform does not know this username. Check the handle with the user instead of retrying.",
+};
+
 export function registerCreatorTools(
   server: ToolRegistrar,
   client: HyperstarClient,
 ): void {
+  server.registerTool(
+    "get_creator_catalog_status",
+    {
+      ...toolMetadata("get_creator_catalog_status"),
+      inputSchema: z
+        .object({ platform: CatalogPlatform, username: CatalogUsername })
+        .strict(),
+    },
+    async ({ platform, username }) => {
+      const status = CatalogStatusResponse.parse(
+        await client.get(
+          "/v1/creators/catalog-status",
+          queryFrom({ platform, username }),
+        ),
+      );
+      return toolResult({
+        ...status,
+        agent_guidance: CATALOG_STATUS_GUIDANCE[status.status],
+        ...(status.status === "not_in_catalog"
+          ? {
+              next_tool: "request_creator_catalog_enrichment",
+              next_arguments: { platform, username: status.username },
+            }
+          : status.status === "ready_in_catalog"
+            ? { next_tool: "search_creators" }
+            : {}),
+      });
+    },
+  );
+
+  server.registerTool(
+    "request_creator_catalog_enrichment",
+    {
+      ...toolMetadata("request_creator_catalog_enrichment"),
+      inputSchema: z
+        .object({ platform: CatalogPlatform, username: CatalogUsername })
+        .strict(),
+    },
+    async ({ platform, username }) => {
+      const result = CatalogEnrichmentResponse.parse(
+        await client.post("/v1/creators/catalog-enrichment", {
+          platform,
+          username,
+        }),
+      );
+      return toolResult({
+        ...result,
+        agent_guidance:
+          result.status === "already_in_catalog"
+            ? "The creator is already indexed; create the reference search now."
+            : "Indexing is queued and runs in the background, usually for a few minutes. Poll get_creator_catalog_status every 15-30 seconds and create the reference search once it reports ready_in_catalog. Do not call search_creators before that.",
+        next_tool:
+          result.status === "already_in_catalog"
+            ? "search_creators"
+            : "get_creator_catalog_status",
+        next_arguments: { platform, username: result.username },
+      });
+    },
+  );
+
   server.registerTool(
     "get_creator",
     {

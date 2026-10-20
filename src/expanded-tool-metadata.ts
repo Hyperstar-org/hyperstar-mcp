@@ -60,6 +60,18 @@ export const EXPANDED_TOOL_METADATA = {
       "Read a known creator by a stable ID or username. Recent content is optional and bounded.",
     annotations: annotations("Get Creator", READ_ONLY),
   },
+  get_creator_catalog_status: {
+    title: "Get Creator Catalog Status",
+    description:
+      "Check whether a TikTok/Instagram creator is indexed and can seed a reference (lookalike) search. Call this before a reference search; not_in_catalog means request_creator_catalog_enrichment first.",
+    annotations: annotations("Get Creator Catalog Status", READ_ONLY),
+  },
+  request_creator_catalog_enrichment: {
+    title: "Request Creator Catalog Enrichment",
+    description:
+      "Queue indexing (crawl and embed) of a TikTok/Instagram creator so it can seed a reference search. Returns immediately; poll get_creator_catalog_status until ready_in_catalog. Indexing usually takes a few minutes.",
+    annotations: annotations("Request Creator Catalog Enrichment", WRITE),
+  },
   list_forms: {
     title: "List Forms",
     description: "List available system and workspace forms for a send.",
@@ -87,12 +99,6 @@ export const EXPANDED_TOOL_METADATA = {
     description:
       "Delete an explicitly approved workspace form from future selection. System defaults remain protected.",
     annotations: annotations("Delete Form", DESTRUCTIVE),
-  },
-  list_email_senders: {
-    title: "List Email Senders",
-    description:
-      "Read send-eligible connected account IDs and addresses; provider credentials are never returned.",
-    annotations: annotations("List Email Senders", READ_ONLY),
   },
   list_campaign_email_waves: {
     title: "List Campaign Email Waves",
@@ -214,12 +220,13 @@ export const EXPANDED_TOOL_ORDER = [
   "list_campaign_video_performance",
   "list_campaign_creator_performance",
   "get_campaign_video_history",
-  "list_email_senders",
   "list_campaign_email_waves",
   "get_campaign_email_wave",
   "cancel_campaign_email_wave",
   "retry_campaign_email_wave",
   "get_creator",
+  "get_creator_catalog_status",
+  "request_creator_catalog_enrichment",
   "list_forms",
   "get_form",
   "create_form",
