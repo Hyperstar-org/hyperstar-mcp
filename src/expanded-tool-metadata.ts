@@ -9,7 +9,7 @@ export const EXPANDED_TOOL_METADATA = {
   create_file_upload: {
     title: "Create File Upload",
     description:
-      "Prepare an actor-bound email attachment, contract or draft/final upload. Return direct PUT instructions and an authenticated browser handoff.",
+      "Prepare an actor-bound campaign/reply email attachment or campaign contract/draft/final upload. Return direct PUT instructions; browser handoffs require the initiating human user.",
     annotations: annotations("Create File Upload", WRITE),
   },
   get_file_upload: {
