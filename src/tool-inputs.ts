@@ -345,6 +345,8 @@ export const GetInboxThreadMessagesInputSchema = z
   .object({
     platform: InboxPlatformSchema,
     thread_id: z.number().int().positive(),
+    limit: z.number().int().min(1).max(100).optional(),
+    cursor: z.string().min(1).max(1024).optional(),
   })
   .strict();
 
@@ -379,7 +381,7 @@ type ListInboxThreadsInput = z.infer<typeof ListInboxThreadsInputSchema>;
 type UpdateInboxThreadStateInput = z.infer<
   typeof UpdateInboxThreadStateInputSchema
 >;
-type GetInboxThreadMessagesInput = z.infer<
+export type GetInboxThreadMessagesInput = z.infer<
   typeof GetInboxThreadMessagesInputSchema
 >;
 type SendInboxReplyInput = z.infer<typeof SendInboxReplyInputSchema>;

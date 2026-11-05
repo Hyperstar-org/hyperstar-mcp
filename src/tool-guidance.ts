@@ -1,8 +1,11 @@
+import { z } from "zod";
+
 import type { JsonObject, JsonValue } from "./http.js";
 import { campaignCreatorSelectionBody } from "./campaign-creator-selection.js";
 import type {
   CampaignCreatorSelectionInput,
   CheckBulkEmailReadinessInput,
+  GetInboxThreadMessagesInput,
 } from "./tool-inputs.js";
 import { compactJsonObject } from "./tool-http-helpers.js";
 
@@ -121,17 +124,40 @@ export function inboxThreadListGuidance(payload: JsonObject): JsonObject {
       "update_inbox_thread_state",
     ],
     agent_guidance:
-      "Use get_inbox_thread_messages to read full message history before replying, get_inbox_aggregates for counts, update_inbox_thread_state for archive/star/snooze/read-state changes, and send_inbox_reply only after explicit user authorization because send_inbox_reply performs a real send.",
+      "Use get_inbox_thread_messages and follow its continuation to read conversation history before replying, get_inbox_aggregates for counts, update_inbox_thread_state for archive/star/snooze/read-state changes, and send_inbox_reply only after explicit user authorization because send_inbox_reply performs a real send.",
   };
 }
 
-/** Add deterministic next-step guidance after reading full inbox messages. */
-export function inboxThreadMessagesGuidance(payload: JsonObject): JsonObject {
+const MessageContinuationSchema = z.object({
+  next_cursor: z.string().min(1).max(1024).nullable().optional(),
+});
+
+/** Accept old complete-history responses during independent API deployment. */
+export function inboxThreadMessagesGuidance(
+  payload: JsonObject,
+  input: GetInboxThreadMessagesInput,
+): JsonObject {
+  const cursor = MessageContinuationSchema.parse(payload).next_cursor;
+  if (cursor != null) {
+    return {
+      ...payload,
+      next_tool: "get_inbox_thread_messages",
+      next_arguments: {
+        platform: input.platform,
+        thread_id: input.thread_id,
+        limit: input.limit ?? 50,
+        cursor,
+      },
+      next_tools: ["get_inbox_thread_messages", "update_inbox_thread_state"],
+      agent_guidance:
+        "This is one message page, ordered oldest to newest within the page. Follow next_arguments to read older pages before relying on the complete conversation.",
+    };
+  }
   return {
     ...payload,
     next_tools: ["send_inbox_reply", "update_inbox_thread_state"],
     agent_guidance:
-      'Review the full message history before drafting. send_inbox_reply performs a real send and requires send_confirmation: "user_authorized".',
+      'No older messages remain in this traversal. Review the pages you retrieved before drafting. send_inbox_reply performs a real send and requires send_confirmation: "user_authorized".',
   };
 }
 
