@@ -1,6 +1,6 @@
 {
   "name": "@hyperstar/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "description": "Local stdio MCP server for Hyperstar headless workflows, authenticated with a service-account API key.",

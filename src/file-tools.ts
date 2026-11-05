@@ -23,6 +23,13 @@ const File = z
   .strict();
 const Target = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("email_attachment"), campaign_id: Id }).strict(),
+  z
+    .object({
+      kind: z.literal("reply_attachment"),
+      platform: z.enum(["tiktok", "instagram", "youtube", "buyer"]),
+      thread_id: Id,
+    })
+    .strict(),
   ...(["contract", "draft", "final"] as const).map((kind) =>
     z
       .object({
@@ -73,7 +80,7 @@ const FileTarget = CreatorTarget.extend({
   ]),
 });
 const guidance =
-  "PUT the exact file bytes to upload.upload_url with its required headers, then call complete_file_upload. Keep binaries outside MCP JSON. If HTTP upload is unavailable, ask the user to open handoff_url in the same Hyperstar account/workspace, then poll get_file_upload. Only a completed email upload's upload_ref can be attached to the target campaign send; uploading does not send email.";
+  "PUT the exact file bytes to upload.upload_url with its required headers, then call complete_file_upload. Keep binaries outside MCP JSON. Service accounts must use direct PUT. A browser handoff requires the initiating human user in the same workspace; that user may open handoff_url, then poll get_file_upload. Attach a completed email_attachment upload_ref only to its target campaign send, or a reply_attachment upload_ref only to its exact platform/thread reply. Uploading does not send email.";
 
 export function registerFileTools(
   server: ToolRegistrar,

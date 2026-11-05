@@ -16,7 +16,7 @@ Public source and release assets:
 
 ```text
 https://github.com/Hyperstar-org/hyperstar-mcp
-https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.0
+https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.1
 ```
 
 ## Hosted connector
@@ -58,14 +58,14 @@ Claude Desktop users should download and install the production Desktop
 Extension:
 
 ```text
-https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.0.mcpb
+https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.1.mcpb
 ```
 
 The extension still runs Hyperstar MCP as a local stdio server; it is not a
 remote HTTP endpoint.
 
 For local builds from this package source, run `npm run build:mcpb` and
-`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.0.mcpb`.
+`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.1.mcpb`.
 
 Paste a service-account API key from Team -> API keys into the extension
 settings as `HYPERSTAR_API_KEY`. The key is already scoped to one workspace.
@@ -528,6 +528,12 @@ npm run smoke:npm
 `npm run smoke:npm` verifies the published npm package can be resolved and that
 the binary prints help without requiring local build artifacts, authentication,
 or real workflow API calls.
+
+## Changes in 0.3.1
+
+- Email attachment uploads can target one exact platform/thread reply.
+- Service-account email uploads use direct PUT and preserve the automation's identity.
+- Browser upload handoffs require the initiating human user in the same workspace.
 
 ## Changes in 0.3.0
 
