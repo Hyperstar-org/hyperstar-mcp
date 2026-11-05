@@ -278,8 +278,13 @@ export function createToolHandlers(
         JsonObjectSchema.parse(
           await client.get(
             `/v1/inbox/threads/${pathSegment(parsedInput.platform)}/${pathSegment(parsedInput.thread_id)}/messages`,
+            queryFrom({
+              limit: parsedInput.limit ?? 50,
+              cursor: parsedInput.cursor,
+            }),
           ),
         ),
+        parsedInput,
       );
     },
 

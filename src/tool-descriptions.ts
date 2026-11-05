@@ -30,7 +30,7 @@ export const TOOL_DESCRIPTIONS = {
   listInboxThreads:
     "List Hyperstar inbox thread summaries with filters for triage. Call get_inbox_thread_messages before drafting replies.",
   getInboxThreadMessages:
-    "Read full message history for one Hyperstar inbox thread before deciding whether to reply.",
+    "Read a bounded message page for one Hyperstar inbox thread. Defaults to 50 messages; follow next_cursor for older history before deciding whether to reply.",
   getInboxAggregates:
     "Read aggregate counts for Hyperstar inbox filters to summarize inbox state.",
   updateInboxThreadState:

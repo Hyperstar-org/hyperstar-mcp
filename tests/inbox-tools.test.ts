@@ -68,6 +68,61 @@ class RecordingHyperstarClient implements HyperstarClient {
 }
 
 describe("inbox tool handlers", () => {
+  it("reads one bounded history page at a time and carries continuation", async () => {
+    const client = new RecordingHyperstarClient([
+      {
+        thread_id: 42,
+        messages: [{ id: 2 }, { id: 3 }],
+        next_cursor: "older-page",
+      },
+      { thread_id: 42, messages: [{ id: 1 }], next_cursor: null },
+    ]);
+    const handlers = createToolHandlers(client);
+    const first = await handlers.getInboxThreadMessages({
+      platform: "youtube",
+      thread_id: 42,
+    });
+    expect(first.messages).toEqual([{ id: 2 }, { id: 3 }]);
+    expect(first.next_arguments).toEqual({
+      platform: "youtube",
+      thread_id: 42,
+      limit: 50,
+      cursor: "older-page",
+    });
+    expect(client.calls).toHaveLength(1);
+    const firstCall = client.calls[0];
+    if (firstCall?.method !== "GET") throw new Error("Expected a page read");
+    expect(firstCall.path).toBe("/v1/inbox/threads/youtube/42/messages");
+    expect(firstCall.query?.get("limit")).toBe("50");
+    expect(firstCall.query?.get("cursor")).toBeNull();
+    const last = await handlers.getInboxThreadMessages({
+      platform: "youtube",
+      thread_id: 42,
+      limit: 50,
+      cursor: "older-page",
+    });
+    expect(last.messages).toEqual([{ id: 1 }]);
+    expect(last.next_cursor).toBeNull();
+    expect(last.next_tool).toBeUndefined();
+    expect(client.calls).toHaveLength(2);
+    const secondCall = client.calls[1];
+    if (secondCall?.method !== "GET") throw new Error("Expected a page read");
+    expect(secondCall.query?.get("cursor")).toBe("older-page");
+  });
+
+  it("accepts complete history from an API deployed before pagination", async () => {
+    const client = new RecordingHyperstarClient([
+      { thread_id: 42, messages: [{ id: 1 }] },
+    ]);
+    const result = await createToolHandlers(client).getInboxThreadMessages({
+      platform: "instagram",
+      thread_id: 42,
+    });
+    expect(result.messages).toEqual([{ id: 1 }]);
+    expect(result.next_tool).toBeUndefined();
+    expect(client.calls).toHaveLength(1);
+  });
+
   it("sendInboxReply posts an explicit idempotent reply body", async () => {
     const client = new RecordingHyperstarClient([
       { message_id: 99, status: "sent" },

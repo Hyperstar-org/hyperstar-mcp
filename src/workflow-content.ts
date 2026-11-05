@@ -47,7 +47,7 @@ export const WORKFLOW_DATA_FLOW_NOTES = [
   "check_bulk_email_readiness and start_bulk_email require recipient_target, either exact campaign_creator_ids or a narrowed campaign_creator_selection.",
   "Use list_campaign_creators after saving search results to find campaign_creator_ids for explicit recipient_target calls.",
   "Use start_email_unlock for selected locked campaign creators, poll get_email_unlock_job, then re-run check_bulk_email_readiness.",
-  'Use list_inbox_threads for triage, get_inbox_thread_messages to read full message history before drafting replies, update_inbox_thread_state for non-send state changes, and send_inbox_reply only after explicit user authorization with send_confirmation: "user_authorized".',
+  'Use list_inbox_threads for triage, get_inbox_thread_messages and its continuation to read conversation history before drafting replies, update_inbox_thread_state for non-send state changes, and send_inbox_reply only after explicit user authorization with send_confirmation: "user_authorized".',
 ] as const;
 
 export const HOSTED_WORKFLOW_SEQUENCE =
@@ -267,7 +267,7 @@ export function buildWorkflowMarkdown(
         "# Inbox Workflow",
         "",
         "1. Call `list_inbox_threads` with filters such as platform, unread state, archive state, search text, or campaign/job identifiers.",
-        "2. Call `get_inbox_thread_messages` before drafting replies; thread lists contain summaries and previews, not full message history.",
+        "2. Call `get_inbox_thread_messages` before drafting replies. It returns one bounded page; follow `next_arguments` while `next_cursor` is present to read older history. Each page is chronological, and pages traverse newest history first. Thread lists contain summaries and previews.",
         "3. Call `get_inbox_aggregates` when the user asks for counts by common inbox filters.",
         "4. Use `update_inbox_thread_state` for archive, star, snooze, or read-state changes.",
         '5. Use `send_inbox_reply` only when the user has authorized a real reply. Include a stable `idempotency_key` and `send_confirmation: "user_authorized"`.',

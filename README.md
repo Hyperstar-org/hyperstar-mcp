@@ -16,7 +16,7 @@ Public source and release assets:
 
 ```text
 https://github.com/Hyperstar-org/hyperstar-mcp
-https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.1
+https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.2
 ```
 
 ## Hosted connector
@@ -58,14 +58,14 @@ Claude Desktop users should download and install the production Desktop
 Extension:
 
 ```text
-https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.1.mcpb
+https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.2.mcpb
 ```
 
 The extension still runs Hyperstar MCP as a local stdio server; it is not a
 remote HTTP endpoint.
 
 For local builds from this package source, run `npm run build:mcpb` and
-`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.1.mcpb`.
+`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.2.mcpb`.
 
 Paste a service-account API key from Team -> API keys into the extension
 settings as `HYPERSTAR_API_KEY`. The key is already scoped to one workspace.
@@ -225,8 +225,9 @@ readiness for one campaign without starting a real send.
 ```
 
 ```text
-List recent Hyperstar inbox threads, then read the full messages for one thread
-before drafting any reply. Do not send a reply unless I explicitly authorize it.
+List recent Hyperstar inbox threads, then read message pages for one thread
+and follow continuation to older history before drafting any reply. Do not send
+a reply unless I explicitly authorize it.
 ```
 
 ## Workflow Safety
@@ -528,6 +529,13 @@ npm run smoke:npm
 `npm run smoke:npm` verifies the published npm package can be resolved and that
 the binary prints help without requiring local build artifacts, authentication,
 or real workflow API calls.
+
+## Changes in 0.3.2
+
+- Updates MCP runtime dependencies to versions with the published security fixes.
+- Inbox message reads request 50 messages by default and accept `limit` and `cursor`.
+- Follow returned `next_arguments` to read older pages before relying on complete history.
+- Pages are chronological within each newest-first history block. Older API responses without continuation remain readable during rollout.
 
 ## Changes in 0.3.1
 
