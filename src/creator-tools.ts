@@ -33,8 +33,8 @@ const Creator = z.object({
 });
 
 const CatalogPlatform = z
-  .enum(["tiktok", "instagram"])
-  .describe("Creator indexing supports TikTok and Instagram.");
+  .enum(["tiktok", "instagram", "youtube"])
+  .describe("Creator indexing supports TikTok, Instagram and YouTube.");
 const CatalogUsername = z
   .string()
   .trim()
@@ -141,11 +141,7 @@ export function registerCreatorTools(
       ...toolMetadata("get_creator"),
       inputSchema: z
         .object({
-          platform: z
-            .enum(["tiktok", "instagram"])
-            .describe(
-              "The detailed catalog lookup currently supports TikTok and Instagram.",
-            ),
+          platform: CatalogPlatform,
           selector: z.discriminatedUnion("type", [
             z
               .object({
@@ -185,7 +181,7 @@ export function registerCreatorTools(
           ),
         ),
         agent_guidance:
-          "These are creator-profile statistics, not campaign results. Email masking and unlock rules still apply. Detailed lookup currently supports TikTok and Instagram; use search/results for supported YouTube discovery.",
+          "These are creator-profile statistics, not campaign results. Email masking and unlock rules still apply. YouTube channel origin IDs are stable; handles can change.",
       });
     },
   );

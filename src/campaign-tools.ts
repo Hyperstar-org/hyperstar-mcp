@@ -8,6 +8,7 @@ import type { ToolRegistrar } from "./tool-registrar.js";
 import {
   AddCampaignCreatorInputSchema,
   CampaignTargetSchema,
+  RegisterCampaignVideoInputSchema,
   UpdateCampaignCreatorInputSchema,
   UpdateCampaignInputSchema,
   WorkflowCountsInputSchema,
@@ -69,6 +70,35 @@ export function registerCampaignTools(
   server: ToolRegistrar,
   client: HyperstarClient,
 ): void {
+  server.registerTool(
+    "register_campaign_video",
+    {
+      ...toolMetadata("register_campaign_video"),
+      inputSchema: RegisterCampaignVideoInputSchema,
+    },
+    async ({ campaign_id, campaign_creator_id, ...registration }) =>
+      toolResult(
+        z
+          .object({
+            video_id: z.number().int().positive(),
+            campaign_id: z.number().int().positive(),
+            campaign_creator_id: z.number().int().positive(),
+            platform: z.enum(["tiktok", "instagram", "youtube"]),
+            origin_id: z.string().nullable(),
+            video_url: z.string().nullable(),
+            collaboration_status: z.string(),
+            tracking_status: z.string(),
+            campaign_creator_outreach_stage: z.string().nullable(),
+            outreach_stage_advanced: z.boolean(),
+          })
+          .parse(
+            await client.post(
+              `/v1/campaigns/${campaign_id}/creators/${campaign_creator_id}/videos`,
+              JsonObjectSchema.parse(registration),
+            ),
+          ),
+      ),
+  );
   server.registerTool(
     "get_campaign",
     { ...toolMetadata("get_campaign"), inputSchema: CampaignTargetSchema },

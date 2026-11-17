@@ -21,6 +21,7 @@ export const HOSTED_TOOL_POLICY = {
   remove_campaign_file: true,
 
   get_creator: true,
+  register_campaign_video: true,
   get_creator_catalog_status: true,
   request_creator_catalog_enrichment: true,
   list_forms: true,

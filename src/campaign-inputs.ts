@@ -4,6 +4,17 @@ import { CampaignCreatorWorkflowFilterSchema } from "./bulk-email-inputs.js";
 export const CampaignTargetSchema = z
   .object({ campaign_id: z.number().int().positive() })
   .strict();
+
+export const RegisterCampaignVideoInputSchema = CampaignTargetSchema.extend({
+  campaign_creator_id: z.number().int().positive(),
+  video_url: z.string().url().max(2048),
+  start_tracking: z.boolean().default(true),
+  idempotency_key: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[A-Za-z0-9._:-]+$/),
+});
 export const RosterFiltersSchema = z
   .object({
     workflow_filter: CampaignCreatorWorkflowFilterSchema.optional(),

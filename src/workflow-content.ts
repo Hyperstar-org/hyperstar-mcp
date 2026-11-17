@@ -42,7 +42,7 @@ export const SERVICE_ACCOUNT_SAFETY_NOTES = [
 
 export const WORKFLOW_DATA_FLOW_NOTES = [
   "search_creators returns a search_id plus compact creator summaries; save_search_results_to_campaign consumes search_id server-side, so agents do not need to load every creator row into context.",
-  "For YouTube, use kind=keyword and stable channel origin IDs; reference search, metric sorting, and campaign video tracking are unavailable.",
+  "For YouTube, keyword search covers every crawled channel; semantic, AI Product-Fit and reference search cover channels with 1,000+ subscribers plus any channel indexed on demand with request_creator_catalog_enrichment. Metric sorting is unavailable.",
   "Indexing a creator is separate from searching. A reference (lookalike) search only runs against an indexed creator: call get_creator_catalog_status first, call request_creator_catalog_enrichment when it reports not_in_catalog, poll status until ready_in_catalog (usually a few minutes), then call search_creators. A 409 REFERENCE_CREATOR_NOT_INDEXED error from search_creators means the same flow is required.",
   "check_bulk_email_readiness and start_bulk_email require recipient_target, either exact campaign_creator_ids or a narrowed campaign_creator_selection.",
   "Use list_campaign_creators after saving search results to find campaign_creator_ids for explicit recipient_target calls.",
@@ -66,7 +66,7 @@ export const SEARCH_FILTER_GUIDANCE = [
   "Use boolean/string filters such as `has_email`, `email_contactability`, `is_verified`, `has_tiktok_shop`, `creator_gender`, `creator_language`, `category_1`, and Instagram `category_name`.",
   "Put broad niches, verticals, and countries in `query`/`region` unless a named structured filter applies; do not invent `country`, `categories`, `follower_count`, or `engagement_rate` filter keys.",
   "Use recent_post_tags for exact latest-stored-post hashtag counts on TikTok/Instagram and tag_match_ratio to rank that cohort; gmv and gpm are TikTok-only.",
-  "YouTube uses kind=keyword and supports region, follower_range, creator_language, and has_email only; do not send reference payloads or metric sorting.",
+  "YouTube supports region, follower_range, creator_language, and has_email only, for every search kind; do not send metric sorting.",
   "Keep filters narrow and serializable; use get_search_results pagination instead of loading every creator row into context.",
 ] as const;
 
@@ -178,7 +178,7 @@ export function buildWorkflowMarkdown(
       return [
         "# Campaign management — for agents",
         "1. Confirm workspace/capabilities with hyperstar_whoami; get_campaign and list_campaign_creators provide settings and filtered, paginated rows.",
-        "2. Use add_campaign_creator with a stable idempotency_key, or update_campaign_creator for explicit assignments. Roster IDs differ from catalog creator IDs.",
+        "2. Use add_campaign_creator with a stable idempotency_key, or update_campaign_creator for explicit assignments. Roster IDs differ from catalog creator IDs. Use register_campaign_video with that campaign_creator_id, a supported post URL and a stable idempotency_key. Tracking starts by default and consumes a tracking slot; set start_tracking=false to register paused.",
         "3. For all matching rows, prepare_campaign_creator_selection freezes at most 100 IDs for 30 minutes. Copy with a stable key; removal requires explicit approval and the successful source IDs from the copy result.",
         "4. Discover list_campaign_email_waves before a follow-up. Readiness and start must use the same kind=follow_up, threading_policy=require_existing, parent wave. Sends use SES. Follow-ups are dev-only until provider threading verification passes.",
         "5. Cancel a confirmed wave to stop eligible pending work; delivered mail cannot be recalled. Retry only after fresh user authorization and with a stable key. Never infer that uncertain delivery failed.",
@@ -234,7 +234,7 @@ export function buildWorkflowMarkdown(
       return [
         "# Search To Campaign",
         "",
-        '1. Call `search_creators` with the platform, region, query, filters, and limit. For YouTube use `kind: "keyword"`.',
+        '1. Call `search_creators` with the platform, region, query, filters, and limit. Use `kind: "semantic"` for meaning-based search and add `product` (optional `image` URLs) for AI Product-Fit; on YouTube, `kind: "keyword"` matches channel text across every crawled channel.',
         "",
         'For a reference (lookalike) search, first call `get_creator_catalog_status` for the reference creator. If it reports `not_in_catalog`, call `request_creator_catalog_enrichment` and poll `get_creator_catalog_status` until `ready_in_catalog` (indexing usually takes a few minutes), then call `search_creators` with `kind: "reference"`.',
         "",

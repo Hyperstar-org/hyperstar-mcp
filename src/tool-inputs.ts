@@ -48,6 +48,18 @@ const SearchRegionSchema = z
   .pipe(z.string().regex(/^[A-Z]{2}$/))
   .describe("two-letter country or market code such as US, KR, JP, or GB.");
 const SearchCreateLimitSchema = PositivePageLimitSchema.max(10000);
+const ProductSearchInputSchema = z
+  .object({
+    image: z
+      .array(z.string().trim().url())
+      .max(4)
+      .default([])
+      .describe("Public product image URLs; the query describes the product."),
+  })
+  .strict()
+  .describe(
+    "AI Product-Fit: rank creators for a product. Only with kind=semantic.",
+  );
 const SearchResultLimitSchema = PositivePageLimitSchema.max(100);
 const SearchResultDetailLevelSchema = z.enum(["summary", "full"]);
 const CampaignIdSchema = z
@@ -67,6 +79,7 @@ export const SearchCreatorsInputSchema = z
     filters: SearchFiltersInputSchema.optional(),
     limit: SearchCreateLimitSchema.optional(),
     reference: JsonObjectSchema.optional(),
+    product: ProductSearchInputSchema.optional(),
     sort_by: SearchSortBySchema.optional(),
     sort_order: z.enum(["asc", "desc"]).optional(),
     detail_level: SearchResultDetailLevelSchema.optional(),
@@ -83,9 +96,11 @@ export const SearchCreatorsInputSchema = z
         path: ["filters", "has_recent_shop_videos"],
       });
     }
+    const hasProductImage = (value.product?.image.length ?? 0) > 0;
     if (
       (value.kind === "semantic" || value.kind === "keyword") &&
-      value.query === undefined
+      value.query === undefined &&
+      !hasProductImage
     ) {
       context.addIssue({
         code: "custom",
@@ -100,11 +115,11 @@ export const SearchCreatorsInputSchema = z
         path: ["reference"],
       });
     }
-    if (value.platform === "youtube" && value.kind !== "keyword") {
+    if (value.product !== undefined && value.kind !== "semantic") {
       context.addIssue({
         code: "custom",
-        message: "YouTube supports keyword creator search only",
-        path: ["kind"],
+        message: "product (AI Product-Fit) requires kind=semantic",
+        path: ["product"],
       });
     }
     if (value.platform !== "youtube" && value.kind === "keyword") {

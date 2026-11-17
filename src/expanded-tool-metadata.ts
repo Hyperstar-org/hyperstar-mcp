@@ -6,6 +6,15 @@ import {
 } from "./tool-annotations.js";
 
 export const EXPANDED_TOOL_METADATA = {
+  register_campaign_video: {
+    title: "Register Campaign Video",
+    description:
+      "Register a TikTok video/photo post, Instagram Reel/post, or YouTube video URL for a campaign creator. Reuse the same idempotency_key when retrying. Starts tracking by default, reserving a tracking slot and advancing the creator to posted when permitted; set start_tracking=false to register paused without reserving a slot.",
+    annotations: {
+      ...annotations("Register Campaign Video", WRITE),
+      idempotentHint: true,
+    },
+  },
   create_file_upload: {
     title: "Create File Upload",
     description:
@@ -57,19 +66,19 @@ export const EXPANDED_TOOL_METADATA = {
   get_creator: {
     title: "Get Creator",
     description:
-      "Read a known creator by a stable ID or username. Recent content is optional and bounded.",
+      "Read a TikTok, Instagram or YouTube creator by a stable ID or username. Recent content is optional and bounded; workspace email-unlock rules apply.",
     annotations: annotations("Get Creator", READ_ONLY),
   },
   get_creator_catalog_status: {
     title: "Get Creator Catalog Status",
     description:
-      "Check whether a TikTok/Instagram creator is indexed and can seed a reference (lookalike) search. Call this before a reference search; not_in_catalog means request_creator_catalog_enrichment first.",
+      "Check whether a TikTok, Instagram or YouTube creator is indexed and can seed a reference (lookalike) search. Call this before a reference search; not_in_catalog means request_creator_catalog_enrichment first.",
     annotations: annotations("Get Creator Catalog Status", READ_ONLY),
   },
   request_creator_catalog_enrichment: {
     title: "Request Creator Catalog Enrichment",
     description:
-      "Queue indexing (crawl and embed) of a TikTok/Instagram creator so it can seed a reference search. Returns immediately; poll get_creator_catalog_status until ready_in_catalog. Indexing usually takes a few minutes.",
+      "Queue indexing (crawl and embed) of a TikTok, Instagram or YouTube creator so it can seed a reference search. Returns immediately; poll get_creator_catalog_status until ready_in_catalog. Indexing usually takes a few minutes.",
     annotations: annotations("Request Creator Catalog Enrichment", WRITE),
   },
   list_forms: {
@@ -211,6 +220,7 @@ export const EXPANDED_TOOL_ORDER = [
   "update_campaign",
   "get_campaign_workflow_counts",
   "add_campaign_creator",
+  "register_campaign_video",
   "update_campaign_creator",
   "prepare_campaign_creator_selection",
   "copy_campaign_creators",

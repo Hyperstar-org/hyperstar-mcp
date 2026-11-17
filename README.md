@@ -16,7 +16,7 @@ Public source and release assets:
 
 ```text
 https://github.com/Hyperstar-org/hyperstar-mcp
-https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.2
+https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.3
 ```
 
 ## Hosted connector
@@ -58,14 +58,14 @@ Claude Desktop users should download and install the production Desktop
 Extension:
 
 ```text
-https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.2.mcpb
+https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.3.mcpb
 ```
 
 The extension still runs Hyperstar MCP as a local stdio server; it is not a
 remote HTTP endpoint.
 
 For local builds from this package source, run `npm run build:mcpb` and
-`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.2.mcpb`.
+`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.3.mcpb`.
 
 Paste a service-account API key from Team -> API keys into the extension
 settings as `HYPERSTAR_API_KEY`. The key is already scoped to one workspace.
@@ -316,7 +316,25 @@ Search creators:
 }
 ```
 
-YouTube creator discovery uses keyword retrieval and stable channel IDs:
+AI Product-Fit is a semantic search with a `product` object; image URLs are
+optional:
+
+```json
+{
+  "tool": "search_creators",
+  "arguments": {
+    "kind": "semantic",
+    "platform": "youtube",
+    "region": "KR",
+    "query": "Korean sunscreen for sensitive skin",
+    "product": { "image": ["https://example.com/sunscreen.png"] },
+    "limit": 25
+  }
+}
+```
+
+YouTube keyword search matches channel text across every crawled channel and
+returns stable channel IDs:
 
 ```json
 {
@@ -345,8 +363,10 @@ named structured filter applies. Use `sort_by` for `relevance`,
 `follower_count`, `engagement_rate`, `avg_views`, `views_growth_rate`, `gmv`, or
 `gpm`.
 
-YouTube supports `follower_range`, `creator_language`, and `has_email` only;
-reference/product search and metric sorting are unavailable.
+YouTube supports `follower_range`, `creator_language`, and `has_email` only,
+and no metric sorting. YouTube semantic, Product-Fit and reference (lookalike)
+searches cover channels with 1,000+ subscribers; index any other channel on
+demand with `request_creator_catalog_enrichment`.
 
 Search tools return compact creator summaries by default so agents do not load
 full profile payloads into context. Use `get_search_results` with
@@ -529,6 +549,15 @@ npm run smoke:npm
 `npm run smoke:npm` verifies the published npm package can be resolved and that
 the binary prints help without requiring local build artifacts, authentication,
 or real workflow API calls.
+
+## Changes in 0.3.3
+
+- Look up YouTube channels with `get_creator`, including channels without handles.
+- Register campaign videos with `register_campaign_video`, a campaign creator row ID,
+  a post URL and a stable retry key. Tracking starts by default; use
+  `start_tracking: false` to register paused without reserving a tracking slot.
+- Workspace email-unlock rules apply to creator lookup. Video registration requires
+  `campaigns:write`; repeated accepted requests do not reserve another slot.
 
 ## Changes in 0.3.2
 
