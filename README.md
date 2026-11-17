@@ -16,7 +16,7 @@ Public source and release assets:
 
 ```text
 https://github.com/Hyperstar-org/hyperstar-mcp
-https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.2
+https://github.com/Hyperstar-org/hyperstar-mcp/releases/tag/v0.3.3
 ```
 
 ## Hosted connector
@@ -58,14 +58,14 @@ Claude Desktop users should download and install the production Desktop
 Extension:
 
 ```text
-https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.2.mcpb
+https://app.hyper-star.org/mcp/hyperstar-mcp-0.3.3.mcpb
 ```
 
 The extension still runs Hyperstar MCP as a local stdio server; it is not a
 remote HTTP endpoint.
 
 For local builds from this package source, run `npm run build:mcpb` and
-`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.2.mcpb`.
+`npm run validate:mcpb`, then install `build/mcpb/hyperstar-mcp-0.3.3.mcpb`.
 
 Paste a service-account API key from Team -> API keys into the extension
 settings as `HYPERSTAR_API_KEY`. The key is already scoped to one workspace.
