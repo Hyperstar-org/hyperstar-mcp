@@ -15,6 +15,7 @@ const scopes = {
   search_creators: ["search:read"],
   get_search_results: ["search:read"],
   get_creator: ["search:read"],
+  register_campaign_video: ["campaigns:write"],
   get_creator_catalog_status: ["search:read"],
   request_creator_catalog_enrichment: ["search:read"],
   list_campaigns: ["campaigns:read"],

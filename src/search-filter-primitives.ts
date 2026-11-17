@@ -3,7 +3,7 @@ import { z } from "zod";
 export const SearchKindSchema = z
   .enum(["semantic", "reference", "keyword"])
   .describe(
-    "Use keyword for YouTube, semantic for TikTok/Instagram text search, and reference only with a reference object.",
+    "semantic for meaning-based search (add product for AI Product-Fit), reference for lookalike search with a reference object, keyword for YouTube channel-text matching.",
   );
 
 export const SearchSortBySchema = z.enum([

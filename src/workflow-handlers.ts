@@ -92,6 +92,7 @@ export function createToolHandlers(
         ["filters", parsedInput.filters],
         ["limit", parsedInput.limit],
         ["reference", parsedInput.reference],
+        ["product", parsedInput.product],
         ["sort_by", parsedInput.sort_by],
         ["sort_order", parsedInput.sort_order],
       ]);
